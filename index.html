@@ -264,6 +264,7 @@
       </form>
       <button id="config-link" type="button">Configurer la connexion au Google Sheet</button>
     </div>
+    <button type="button" id="install-btn-login" class="btn btn-ghost install-trigger" style="display:none; margin-top:14px;">📲 Installer l'application</button>
   </div>
 </div>
 
@@ -363,6 +364,18 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="install-help-modal">
+  <div class="modal" style="max-width:400px;">
+    <h3 style="margin-top:0;">📲 Installer Excelltout</h3>
+    <div id="install-help-body" style="font-size:13.5px; line-height:1.55;"></div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+      <a id="install-open-chrome" class="btn btn-sm" style="display:none; width:100%; text-decoration:none; text-align:center;">Ouvrir dans Chrome</a>
+      <button class="btn btn-ghost btn-sm" type="button" id="install-copy-link" style="width:100%;">Copier le lien</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="install-help-close" style="width:100%;">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== APP ==================== -->
 <div id="loading-overlay" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(8,27,51,0.6); backdrop-filter:blur(1.5px); align-items:center; justify-content:center; flex-direction:column; gap:14px;">
   <div class="spinner"></div>
@@ -418,6 +431,13 @@
     <div id="radio-bar" style="display:none; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-radius:12px; margin-bottom:16px; background:var(--surface); border:1px solid var(--border);">
       <span style="display:flex; align-items:center; gap:9px; font-size:13.5px; font-weight:600;">📻 Radio Fahazavana <span style="font-weight:400; color:var(--muted); font-size:11.5px;">— 88.6 FM</span></span>
       <a href="https://radio.mg/fahazavana/" target="_blank" rel="noopener" id="radio-open-btn" class="btn btn-sm" style="text-decoration:none; padding:7px 14px;">▶ Écouter ↗</a>
+    </div>
+    <div id="install-bar" style="display:none; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-radius:12px; margin-bottom:16px; background:var(--surface); border:1px solid var(--border);">
+      <span style="font-size:13.5px; font-weight:600;">📲 Installe Excelltout sur ton appareil</span>
+      <span style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+        <button type="button" class="btn btn-sm install-trigger" style="padding:7px 14px;">Installer</button>
+        <button type="button" id="install-bar-close" class="row-del" title="Masquer">✕</button>
+      </span>
     </div>
     </div>
     <!-- ---------- DASHBOARD ---------- -->
@@ -2678,6 +2698,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'24/09/2026', motif:"Bouton d'installation de l'application", description:"Hébergement déplacé vers GitHub Pages. Ajout d'un bouton « Installer l'application » sur l'écran de connexion et d'une barre d'installation masquable dans l'application : l'installation se lance d'un clic quand le navigateur le permet, sinon une aide pas à pas s'affiche (ouverture dans Chrome, menu ⋮, iPhone), avec copie du lien.", version:'1.35' },
   { date:'23/09/2026', motif:'Enregistrement accéléré et file modifiable', description:"Accélération de l'enregistrement et de la synchronisation par traitement simultané contrôlé. Le compteur des données non synchronisées ouvre désormais leur détail, avec possibilité de modifier ou de retirer chaque entrée avant l'envoi.", version:'1.34' },
   { date:'22/09/2026', motif:'Bilan financier épuré', description:"Suppression des colonnes Membre et Foyer dans le tableau détaillé du bilan PDF.", version:'1.33' },
   { date:'17/09/2026', motif:'Solde séquentiel et bilan simplifié', description:"Suppression de la synthèse par catégorie. Les mouvements sont triés du plus ancien au plus récent et le solde commence à zéro : chaque revenu est ajouté et chaque dépense est soustraite dès la première ligne.", version:'1.32' },
@@ -3247,6 +3268,86 @@ async function enterApp(){
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+
+/* ============================================================
+   INSTALLATION DE L'APPLICATION — bouton « Installer » + aide
+============================================================ */
+let deferredInstallPrompt = null;
+let appJustInstalled = false;
+const ua = navigator.userAgent;
+const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(ua);
+const isInAppBrowser = /FBAN|FBAV|FB_IAB|Instagram|Line\/|; wv\)/i.test(ua); // Messenger, Facebook, Instagram, WebView…
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+function updateInstallUI(){
+  // Sur ordinateur, le bouton n'apparaît que si le navigateur propose réellement l'installation.
+  // Sur téléphone, il reste visible : sans installation directe possible, il ouvre l'aide pas à pas.
+  const show = !isStandalone() && !appJustInstalled && (!!deferredInstallPrompt || isIOS || isAndroid);
+  $('#install-btn-login').style.display = show ? 'block' : 'none';
+  $('#install-bar').style.display = show && localStorage.getItem('install_bar_hidden') !== '1' ? 'flex' : 'none';
+}
+
+function showInstallHelp(){
+  const openChrome = $('#install-open-chrome');
+  if(isIOS){
+    $('#install-help-body').innerHTML = `
+      <p style="margin-top:0;">Sur iPhone / iPad, l'installation se fait depuis <b>Safari</b> :</p>
+      <ol style="padding-left:20px;">
+        <li>Touche le bouton <b>Partager</b> (carré avec une flèche vers le haut).</li>
+        <li>Choisis <b>« Sur l'écran d'accueil »</b>, puis <b>Ajouter</b>.</li>
+      </ol>
+      <p style="color:var(--muted); margin-bottom:0;">Lien ouvert depuis WhatsApp, Messenger ou Gmail ? Copie-le et ouvre-le d'abord dans Safari.</p>`;
+    openChrome.style.display = 'none';
+  } else {
+    $('#install-help-body').innerHTML = `
+      <p style="margin-top:0;">${isInAppBrowser
+        ? "Tu es dans le navigateur d'une autre application (Messenger, Facebook…), qui ne sait pas installer d'application."
+        : "Ton navigateur ne propose pas l'installation directe ici. C'est souvent le cas quand le lien est ouvert depuis WhatsApp, Messenger ou Gmail."}</p>
+      <ol style="padding-left:20px;">
+        <li>Ouvre ce lien dans <b>Chrome</b>${isAndroid ? ' (bouton ci-dessous)' : ''}.</li>
+        <li>Dans Chrome, touche le menu <b>⋮</b> en haut à droite.</li>
+        <li>Choisis <b>« Installer l'application »</b> (ou « Ajouter à l'écran d'accueil », puis « Installer »).</li>
+      </ol>
+      <p style="color:var(--muted); margin-bottom:0;">Si Chrome affiche « Ouvrir dans l'application », Excelltout est déjà installée.</p>`;
+    // Lien spécial Android qui force l'ouverture de la page dans Chrome, même depuis une autre application.
+    openChrome.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+    openChrome.style.display = isAndroid ? 'block' : 'none';
+  }
+  $('#install-help-modal').classList.add('show');
+}
+
+async function triggerInstall(){
+  const promptEvent = deferredInstallPrompt;
+  if(!promptEvent){ showInstallHelp(); return; }
+  deferredInstallPrompt = null; // le navigateur n'autorise qu'une seule demande par événement
+  try{
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    if(choice.outcome !== 'accepted') toast("Installation annulée. Tu peux la relancer à tout moment.");
+  } catch(err){
+    showInstallHelp();
+  }
+  updateInstallUI();
+}
+
+// On garde l'événement pour nos boutons, sans bloquer la bannière automatique du navigateur.
+window.addEventListener('beforeinstallprompt', (e) => { deferredInstallPrompt = e; updateInstallUI(); });
+window.addEventListener('appinstalled', () => {
+  appJustInstalled = true; deferredInstallPrompt = null;
+  updateInstallUI();
+  toast('Excelltout est installée sur ton appareil ✅');
+});
+
+$$('.install-trigger').forEach(btn => btn.addEventListener('click', triggerInstall));
+$('#install-bar-close').addEventListener('click', () => { localStorage.setItem('install_bar_hidden', '1'); updateInstallUI(); });
+$('#install-help-close').addEventListener('click', () => $('#install-help-modal').classList.remove('show'));
+$('#install-copy-link').addEventListener('click', async () => {
+  const url = location.origin + location.pathname;
+  try{ await navigator.clipboard.writeText(url); toast('Lien copié — colle-le dans Chrome.'); }
+  catch(err){ window.prompt('Copie ce lien, puis colle-le dans Chrome :', url); }
+});
+updateInstallUI();
 </script>
 </body>
 </html>
