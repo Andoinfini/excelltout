@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème de la fenêtre (avant l'affichage de Compose) : les couleurs de l'interface sont dans le thème Compose. -->
+    <style name="Theme.EcoleDimanche" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fond_fenetre</item>
+    </style>
+</resources>

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tous les libellés de l'application, en français.
+    « app_name » est le nom affiché sous l'icône : le modifier ici ne change PAS l'identifiant
+    technique de l'application (applicationId), donc les mises à jour et les données sont préservées.
+-->
+<resources>
+    <string name="app_name">École du Dimanche</string>
+
+    <!-- Général -->
+    <string name="chargement">Chargement…</string>
+    <string name="action_ok">OK</string>
+    <string name="action_annuler">Annuler</string>
+    <string name="action_fermer">Fermer</string>
+    <string name="action_retour">Retour</string>
+    <string name="action_reessayer">Réessayer</string>
+    <string name="demarrage_chargement">Préparation des données…</string>
+    <string name="demarrage_erreur">Impossible d’ouvrir les données de l’application.</string>
+    <string name="photo_de">Photo de %1$s %2$s</string>
+    <string name="age_an">%1$d an</string>
+    <string name="age_ans">%1$d ans</string>
+    <string name="oui">Oui</string>
+    <string name="non">Non</string>
+    <string name="non_renseigne">Non renseigné</string>
+    <string name="sexe_garcon">Garçon</string>
+    <string name="sexe_fille">Fille</string>
+
+    <!-- Navigation -->
+    <string name="nav_dimanche">Dimanche</string>
+    <string name="nav_enfants">Enfants</string>
+    <string name="nav_ajouter">Ajouter</string>
+    <string name="nav_assiduite">Assiduité</string>
+
+    <!-- Statuts -->
+    <string name="statut_non_enregistre">Non enregistré</string>
+    <string name="statut_present">Présent</string>
+    <string name="statut_en_retard">En retard</string>
+    <string name="statut_absent">Absent</string>
+
+    <!-- Écran Dimanche -->
+    <string name="phase_a_venir">Séance à venir</string>
+    <string name="phase_en_cours">Pointage en cours — clôture à %1$s</string>
+    <string name="phase_cloturee">Séance clôturée</string>
+    <string name="dimanche_precedent">Dimanche précédent</string>
+    <string name="dimanche_suivant">Dimanche suivant</string>
+    <string name="dimanche_choisir">Choisir un dimanche</string>
+    <string name="dimanche_revenir">Dimanche actuel</string>
+    <string name="dimanche_vide_titre">Aucun enfant prévu ce dimanche</string>
+    <string name="dimanche_vide_message">Ajoutez un enfant pour commencer le pointage.</string>
+    <string name="dimanche_erreur">Impossible de lire les présences.</string>
+    <string name="carte_description">%1$s %2$s : %3$s</string>
+
+    <!-- Panneau de pointage et de correction -->
+    <string name="panneau_statut_actuel">Statut actuel :</string>
+    <string name="panneau_correction_titre">Corriger le statut</string>
+    <string name="bouton_present">PRÉSENT</string>
+    <string name="bouton_en_retard">EN RETARD</string>
+    <string name="bouton_absent">ABSENT</string>
+    <string name="action_annuler_pointage">Annuler le pointage</string>
+    <string name="erreur_pointage_ecriture">L’enregistrement a échoué : le statut n’a pas été modifié. Réessayez.</string>
+    <string name="erreur_pointage_a_venir">Cette séance n’a pas encore commencé : le pointage est désactivé.</string>
+    <string name="erreur_pointage_non_admissible">Cet enfant ne participe pas à ce dimanche.</string>
+    <string name="erreur_pointage_absent_interdit">« Absent » est attribué à la clôture. Utilisez « Annuler le pointage » pour revenir à « Non enregistré ».</string>
+    <string name="erreur_pointage_annulation">La séance est clôturée : choisissez Présent, En retard ou Absent.</string>
+
+    <!-- Écran Enfants -->
+    <string name="enfants_titre">Enfants</string>
+    <string name="enfants_recherche">Rechercher un enfant</string>
+    <string name="recherche_effacer">Effacer la recherche</string>
+    <string name="enfants_ajouter">Ajouter un enfant</string>
+    <string name="filtre_actifs">Actifs</string>
+    <string name="filtre_archives">Archivés</string>
+    <string name="enfants_vide_actifs">Aucun enfant inscrit</string>
+    <string name="enfants_vide_actifs_message">Touchez « Ajouter un enfant » pour créer la première fiche.</string>
+    <string name="enfants_vide_archives">Aucun enfant archivé</string>
+    <string name="enfants_aucun_resultat">Aucun enfant ne correspond à « %1$s ».</string>
+
+    <!-- Fiche -->
+    <string name="fiche_titre">Fiche de l’enfant</string>
+    <string name="fiche_modifier">Modifier</string>
+    <string name="fiche_changer_photo">Changer la photo</string>
+    <string name="fiche_historique">Voir l’historique</string>
+    <string name="fiche_archiver">Archiver l’enfant</string>
+    <string name="fiche_archive_badge">Archivé</string>
+    <string name="fiche_introuvable">Cette fiche n’existe plus.</string>
+    <string name="fiche_erreur">Impossible de lire cette fiche.</string>
+    <string name="fiche_photo_manquante">La photo est introuvable. Vous pouvez la remplacer avec « Changer la photo ».</string>
+    <string name="archivage_titre">Archiver l’enfant</string>
+    <string name="archivage_message">Voulez-vous archiver cet enfant ? Sa fiche et son historique seront conservés. Il ne figurera plus dans les prochains pointages.</string>
+    <string name="archivage_confirmer">Archiver</string>
+    <string name="archivage_erreur">L’archivage a échoué. Réessayez.</string>
+    <string name="erreur_remplacement_photo">La photo n’a pas pu être remplacée. L’ancienne photo est conservée.</string>
+
+    <!-- Sections et libellés des fiches et du formulaire -->
+    <string name="section_enfant">Enfant</string>
+    <string name="section_pere">Père</string>
+    <string name="section_mere">Mère</string>
+    <string name="section_fratrie">Frères et sœurs</string>
+    <string name="section_eglise">Église</string>
+    <string name="section_suivi">Suivi dans l’application</string>
+    <string name="label_obligatoire">%1$s *</string>
+    <string name="label_nom">Nom</string>
+    <string name="label_prenom">Prénom</string>
+    <string name="label_naissance">Date de naissance</string>
+    <string name="label_age_calcule">Âge (calculé automatiquement)</string>
+    <string name="label_sexe">Sexe</string>
+    <string name="label_adresse">Adresse</string>
+    <string name="label_nom_pere">Nom du père</string>
+    <string name="label_pere_membre">Père membre de l’église ?</string>
+    <string name="label_nom_mere">Nom de la mère</string>
+    <string name="label_mere_membre">Mère membre de l’église ?</string>
+    <string name="label_nb_freres">Nombre de frères et/ou sœurs</string>
+    <string name="label_nb_freres_membres">Nombre de frères et/ou sœurs membres de l’église</string>
+    <string name="label_arrivee">Date d’arrivée dans l’église</string>
+    <string name="label_debut_suivi">Début du suivi</string>
+    <string name="label_fin_suivi">Fin du suivi</string>
+
+    <!-- Formulaire -->
+    <string name="formulaire_titre_ajout">Nouvel enfant</string>
+    <string name="formulaire_titre_modif">Modifier l’enfant</string>
+    <string name="formulaire_enregistrer">ENREGISTRER L’ENFANT</string>
+    <string name="formulaire_photo_description">Photo validée de l’enfant</string>
+    <string name="formulaire_reprendre_photo">Reprendre la photo</string>
+    <string name="date_placeholder">JJ/MM/AAAA</string>
+    <string name="date_choisir">Choisir une date</string>
+    <string name="date_effacer">Effacer la date</string>
+    <string name="erreur_obligatoire">Ce champ est obligatoire.</string>
+    <string name="erreur_date_future">La date ne peut pas être dans le futur.</string>
+    <string name="erreur_arrivee_avant_naissance">La date d’arrivée ne peut pas être antérieure à la naissance.</string>
+    <string name="erreur_nombre_invalide">Saisissez un nombre entier positif ou nul.</string>
+    <string name="erreur_membres_superieur">Le nombre de membres ne peut pas dépasser le nombre total de frères et sœurs.</string>
+    <string name="erreur_trop_long">Texte trop long.</string>
+    <string name="erreur_formulaire_ecriture">L’enregistrement a échoué. Vos informations sont conservées : réessayez.</string>
+    <string name="erreur_photo_absente">Aucune photo validée : reprenez la photo.</string>
+    <string name="abandon_titre">Abandonner l’ajout ?</string>
+    <string name="abandon_message">La photo et les informations saisies seront perdues. Aucune fiche ne sera créée.</string>
+    <string name="abandon_confirmer">Abandonner</string>
+    <string name="abandon_continuer">Continuer la saisie</string>
+    <string name="photo_temporaire_perdue">La photo temporaire n’est plus disponible. Reprenez la photo.</string>
+
+    <!-- Caméra et permission -->
+    <string name="camera_chargement">Ouverture de la caméra…</string>
+    <string name="camera_traitement">Préparation de la photo…</string>
+    <string name="camera_prendre">Prendre la photo</string>
+    <string name="camera_changer">Changer de caméra</string>
+    <string name="camera_fermer">Fermer la caméra</string>
+    <string name="camera_indisponible">La caméra est indisponible</string>
+    <string name="camera_indisponible_aide">Aucune fiche n’a été créée. Vérifiez qu’aucune autre application n’utilise la caméra, puis réessayez.</string>
+    <string name="camera_erreur_capture">La photo n’a pas pu être enregistrée. Réessayez.</string>
+    <string name="permission_titre">Autorisation de la caméra</string>
+    <string name="permission_refus_temporaire">L’application a besoin de la caméra pour photographier l’enfant. Les photos restent uniquement sur ce téléphone. Les autres fonctions restent disponibles.</string>
+    <string name="permission_refus_definitif">L’autorisation de la caméra a été refusée de façon définitive. Ouvrez les paramètres de l’application pour l’accorder. Les autres fonctions restent disponibles.</string>
+    <string name="permission_autoriser">Autoriser la caméra</string>
+    <string name="permission_parametres">Ouvrir les paramètres</string>
+    <string name="permission_annuler">Annuler l’ajout</string>
+    <string name="apercu_titre">Vérifiez la photo</string>
+    <string name="apercu_description">Aperçu de la photo prise</string>
+    <string name="apercu_reprendre">Reprendre</string>
+    <string name="apercu_utiliser">Utiliser cette photo</string>
+
+    <!-- Assiduité et historique -->
+    <string name="assiduite_titre">Assiduité</string>
+    <string name="assiduite_erreur">Impossible de calculer l’assiduité.</string>
+    <string name="assiduite_aucune_seance">Aucune séance clôturée</string>
+    <string name="assiduite_compteurs">Présences %1$d · Retards %2$d · Absences %3$d</string>
+    <string name="historique_titre">Historique</string>
+    <string name="historique_erreur">Impossible de lire l’historique.</string>
+    <string name="historique_vide_titre">Aucun dimanche pour le moment</string>
+    <string name="historique_vide_debut">Le suivi de cet enfant commence le %1$s.</string>
+    <string name="historique_vide_archive">Cet enfant a été archivé avant son premier dimanche de suivi.</string>
+</resources>

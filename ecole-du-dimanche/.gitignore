@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Fichiers locaux et secrets : ne jamais versionner
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# Sorties de compilation
+*.apk
+*.aab

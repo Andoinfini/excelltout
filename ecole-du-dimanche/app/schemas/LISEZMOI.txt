@@ -1,0 +1,13 @@
+Schémas Room exportés
+=====================
+
+Ce dossier reçoit, à chaque compilation, le schéma de la base :
+
+    app/schemas/mg.ecoledimanche.presences.data.local.AppDatabase/<version>.json
+
+Le fichier « 1.json » est GÉNÉRÉ par Room (processeur KSP) lors de la première compilation de l'application :
+il n'a pas été écrit à la main. Une fois généré, versionnez-le avec le code.
+
+À chaque évolution de la base : incrémenter `version` dans AppDatabase, ajouter une Migration explicite dans
+`AppDatabase.MIGRATIONS` (jamais de migration destructive : les données des enfants doivent survivre) et
+compléter `MigrationRoomTest`. Ces schémas servent aussi aux tests de migration instrumentés.
