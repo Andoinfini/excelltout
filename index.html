@@ -225,6 +225,60 @@
   body.demo-mode .verset-edit{ display:none !important; }
   .demo-ticker{ display:none; align-items:center; gap:10px; padding:9px 16px; border-radius:10px; margin-bottom:16px; background:rgba(176,132,204,0.12); border:1px solid rgba(176,132,204,0.35); font-size:12px; color:#cbb3e0; overflow:hidden; }
   body.demo-mode .demo-ticker{ display:flex; }
+
+  /* ---------- Historique : résumé de la sélection ---------- */
+  #tx-summary{ flex-wrap:wrap; gap:6px 18px; font-size:12.5px; color:var(--muted); margin:-2px 0 12px; }
+  #tx-summary b{ font-weight:600; }
+
+  /* ---------- Bilan imprimé (rempli au moment d'imprimer, invisible à l'écran) ---------- */
+  #print-report{ display:none; page:bilan; font-family:'Inter', sans-serif; font-size:9pt; color:#172033; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page bilan{
+    size:A4 landscape; margin:12mm 11mm 14mm;
+    @bottom-right{ content:"Page " counter(page) " / " counter(pages); font-family:'Inter', sans-serif; font-size:7.5pt; color:#8A94A6; }
+  }
+  @media print{
+    html{ height:auto; }
+    body.printing-report{ background:#fff !important; color:#172033 !important; height:auto; }
+    body.printing-report > *:not(#print-report){ display:none !important; }
+    body.printing-report #print-report{ display:block !important; }
+  }
+  #print-report .pr-head{ display:flex; justify-content:space-between; align-items:flex-end; gap:20px; padding-bottom:12px; border-bottom:3px solid #1878E0; }
+  #print-report .pr-brand{ display:flex; align-items:center; gap:14px; }
+  #print-report .pr-brand img{ width:48px; height:48px; border-radius:50%; object-fit:cover; box-shadow:0 0 0 2px #E3ECF8; }
+  #print-report .pr-kicker{ font-size:7.5pt; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#1878E0; }
+  #print-report h1{ font-family:'Fraunces', serif; font-size:21pt; font-weight:600; color:#081B33; margin:2px 0 3px; }
+  #print-report .pr-period{ font-size:10pt; color:#4A5568; }
+  #print-report .pr-meta{ text-align:right; font-size:8.5pt; color:#6B778C; }
+  #print-report .pr-chips{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin-top:6px; }
+  #print-report .pr-chips span{ background:#EEF4FC; color:#06336E; border:1px solid #D3E3F7; border-radius:20px; padding:2px 9px; font-size:8pt; font-weight:600; }
+  #print-report .pr-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 16px; }
+  #print-report .pr-kpi{ border:1px solid #E3E8EF; border-left:4px solid #8FA3C2; border-radius:8px; padding:9px 12px; background:#F8FAFD; }
+  #print-report .pr-kpi span{ display:block; font-size:7.5pt; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#6B778C; }
+  #print-report .pr-kpi strong{ display:block; margin-top:3px; font-family:'IBM Plex Mono', monospace; font-size:13.5pt; font-weight:600; color:#081B33; }
+  #print-report .pr-kpi.income{ border-left-color:#2E9E6A; }
+  #print-report .pr-kpi.expense{ border-left-color:#D0453B; }
+  #print-report .pr-kpi.balance{ border-left-color:#1878E0; }
+  #print-report .pr-kpi.balance strong{ color:#06336E; }
+  #print-report .pr-section{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:6px; }
+  #print-report h2{ font-family:'Fraunces', serif; font-size:12.5pt; font-weight:600; color:#081B33; margin:0; }
+  #print-report .pr-section span{ font-size:8pt; color:#6B778C; }
+  #print-report .pr-table{ width:100%; border-collapse:collapse; font-size:8.5pt; }
+  #print-report .pr-table thead{ display:table-header-group; }
+  #print-report .pr-table tfoot{ display:table-row-group; }
+  #print-report .pr-table tr{ break-inside:avoid; }
+  #print-report .pr-table th{ background:#081B33; color:#fff; text-align:left; font-size:7.5pt; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:6px 7px; border:none; }
+  #print-report .pr-table td{ padding:5px 7px; border-bottom:1px solid #E8ECF2; vertical-align:top; color:#172033; }
+  #print-report .pr-table tbody tr:nth-child(even) td{ background:#F6F8FB; }
+  #print-report .pr-table .date{ font-weight:600; white-space:nowrap; }
+  #print-report .pr-table .desc{ color:#2D3748; }
+  #print-report .pr-table .num{ text-align:right; white-space:nowrap; font-family:'IBM Plex Mono', monospace; }
+  #print-report .pr-table .solde{ font-weight:600; }
+  #print-report .pr-table .stamp{ white-space:nowrap; font-size:7.5pt; color:#8A94A6; }
+  #print-report .pr-table tfoot td{ border-top:2px solid #081B33; border-bottom:none; background:#EEF4FC; font-weight:700; padding:7px; }
+  #print-report .pr-table .income, #print-report .pr-kpi.income strong{ color:#1F7A50; }
+  #print-report .pr-table .expense, #print-report .pr-table .negative, #print-report .pr-kpi.expense strong{ color:#B8372E; }
+  #print-report .zero{ color:#B4BCC8; }
+  #print-report .pr-foot{ margin-top:12px; padding-top:7px; border-top:1px solid #E3E8EF; font-size:7.5pt; color:#8A94A6; text-align:right; }
 </style>
 </head>
 <body>
@@ -557,11 +611,12 @@
             <button class="btn btn-ghost btn-sm" id="tx-filter-reset" type="button" style="padding:6px 10px; font-size:12.5px;">Réinitialiser</button>
           </div>
         </div>
+        <div id="tx-summary" style="display:none;"></div>
         <div style="overflow-x:auto;"><table id="tx-table">
           <thead><tr><th>Date</th><th>Membre</th><th>Foyer</th><th>Catégorie</th><th>Sous-cat.</th><th>Description</th><th>Montant</th><th></th></tr></thead>
           <tbody></tbody>
         </table></div>
-        <div class="empty-state" id="tx-empty" style="display:none;"><div class="ic">📭</div>Aucune transaction pour l'instant.</div>
+        <div class="empty-state" id="tx-empty" style="display:none;"><div class="ic">📭</div><span id="tx-empty-text">Aucune transaction pour l'instant.</span></div>
         <div id="tx-pagination" style="display:none; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border); flex-wrap:wrap;">
           <span id="tx-pagination-info" style="font-size:12.5px; color:var(--muted);"></span>
           <span style="display:flex; gap:8px;">
@@ -864,6 +919,7 @@
 </div>
 
 <div id="toast"></div>
+<div id="print-report"></div>
 
 <script>
 const $ = (sel) => document.querySelector(sel);
@@ -1004,6 +1060,34 @@ function logError(context, err){
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR');
 const todayISO = () => new Date().toISOString().slice(0,10);
 
+// Le Sheet renvoie la date d'une transaction sous forme d'horodatage UTC (ex. « 2026-10-25T07:00:00.000Z »
+// pour le 25/10 dans le fuseau du Sheet). On la ramène à une date simple AAAA-MM-JJ : décaler de 12 h avant
+// de lire la date UTC retombe sur le bon jour quel que soit le fuseau du Sheet (entre UTC−12 et UTC+12).
+function dateOnly(value){
+  const raw = String(value == null ? '' : value).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const fr = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(fr) return `${fr[3]}-${fr[2].padStart(2,'0')}-${fr[1].padStart(2,'0')}`;
+  const d = new Date(raw);
+  if(!raw || Number.isNaN(d.getTime())) return raw;
+  return new Date(d.getTime() + 12*3600*1000).toISOString().slice(0,10);
+}
+// AAAA-MM-JJ → JJ/MM/AAAA
+function dateFr(value){
+  const iso = dateOnly(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split('-').reverse().join('/') : iso;
+}
+// Date et heure de saisie (« date d'intégration »), affichées dans le fuseau de l'appareil.
+function stampFr(value){
+  const raw = String(value == null ? '' : value).trim();
+  const d = new Date(raw);
+  if(!raw || Number.isNaN(d.getTime())) return raw;
+  return `${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+}
+function normalizeTransactionDates(){
+  (store.transactions || []).forEach(t => { t.Date = dateOnly(t.Date); });
+}
+
 function toast(msg){
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2400);
@@ -1052,7 +1136,7 @@ function applyOptimistic(action, payload, localId){
       store.transactions.push({ ID:localId, Date:payload.date, Membre:payload.membre, Type:payload.type,
         Categorie:payload.categorie, SousCategorie:payload.sousCategorie||'', Montant:Number(payload.montant),
         Description:payload.description||'', Foyer:payload.foyer||'', ObjectifID:payload.objectifId||'',
-        Horodatage:new Date().toISOString().slice(0,19).replace('T',' '), _pending:true });
+        Horodatage:new Date().toISOString(), _pending:true });
       break;
     case 'updateTransaction': {
       const t = store.transactions.find(x=>x.ID===payload.id);
@@ -1675,6 +1759,7 @@ async function loadData(){
       const cached = loadStoreCache();
       if(cached){
         store = cached;
+        normalizeTransactionDates();
         applyPendingToStore();
         applyDemoFoyerScope();
         updateOfflineBanner();
@@ -1694,6 +1779,7 @@ async function loadData(){
       return;
     }
     store = data;
+    normalizeTransactionDates();
     if(!isDemoMode) saveStoreCache();
     applyPendingToStore(); // réapplique les modifications pas encore synchronisées, pour ne pas les faire disparaître
     applyDemoFoyerScope();
@@ -2028,7 +2114,7 @@ function renderDetailModalRows(){
     <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--border); gap:10px;">
       <div style="min-width:0;">
         <div style="font-size:13.5px;">${detailModalMode==='category' ? (t.SousCategorie || t.Categorie) : t.Categorie + (t.SousCategorie ? ' · '+t.SousCategorie : '')}</div>
-        <div style="font-size:11.5px; color:var(--muted);">${t.Date} · ${t.Membre}${t.Description ? ' · '+t.Description : ''}</div>
+        <div style="font-size:11.5px; color:var(--muted);">${dateFr(t.Date)} · ${t.Membre}${t.Description ? ' · '+t.Description : ''}</div>
       </div>
       <div class="mono ${t.Type==='Revenu'?'amount-pos':'amount-neg'}" style="white-space:nowrap;">${fmt(t.Montant)} Ar</div>
     </div>`).join('') : (soldeReporteLigne ? '' : `<div class="empty-state"><div class="ic">📭</div>Aucune transaction pour ce filtre.</div>`));
@@ -2162,93 +2248,120 @@ function reportEscape(value){
     .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
-function reportDateFr(value){
-  const parts = String(value || '').slice(0,10).split('-');
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : String(value || '');
+// Transactions retenues par les filtres de l'historique (avant tri et pagination) :
+// le tableau et le bilan imprimé partent exactement de la même sélection.
+function getFilteredTransactions(){
+  const filters = {
+    foyer: $('#tx-filter-foyer').value,
+    categorie: $('#tx-filter-categorie').value,
+    dateFrom: $('#tx-filter-date-from').value,
+    dateTo: $('#tx-filter-date-to').value,
+  };
+  const rows = (store.transactions || [])
+    .filter(t => !filters.foyer || t.Foyer === filters.foyer)
+    .filter(t => !filters.categorie || t.Categorie === filters.categorie)
+    .filter(t => !filters.dateFrom || dateOnly(t.Date) >= filters.dateFrom)
+    .filter(t => !filters.dateTo || dateOnly(t.Date) <= filters.dateTo);
+  return { rows, filters };
 }
 
-function reportDateTimeFr(value){
-  const raw = String(value || '').trim();
-  if(!raw) return '—';
-  const date = reportDateFr(raw);
-  const timeMatch = raw.match(/[T\s](\d{2}:\d{2})/);
-  return timeMatch ? `${date} ${timeMatch[1]}` : date;
+const txStamp = (t) => new Date(t.Horodatage || 0).getTime() || 0;
+// Ordre chronologique : date de la transaction, puis heure de saisie pour départager une même journée.
+const byDateAsc = (a,b) => dateOnly(a.Date).localeCompare(dateOnly(b.Date)) || txStamp(a) - txStamp(b);
+
+function txTotals(rows){
+  const revenus = rows.filter(t => t.Type === 'Revenu').reduce((s,t) => s + Number(t.Montant || 0), 0);
+  const depenses = rows.filter(t => t.Type === 'Dépense').reduce((s,t) => s + Number(t.Montant || 0), 0);
+  return { revenus, depenses, solde: revenus - depenses };
 }
 
+// Le bilan est imprimé depuis la page elle-même (et non une fenêtre séparée) :
+// fonctionne aussi dans l'application installée sur téléphone.
 function printTransactionReport(){
-  const dateFrom = $('#tx-filter-date-from').value;
-  const dateTo = $('#tx-filter-date-to').value;
-  if(!dateFrom || !dateTo){
-    toast('Sélectionne une date de début et une date de fin.');
-    return;
-  }
-  if(dateFrom > dateTo){
+  const { rows, filters } = getFilteredTransactions();
+  if(filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo){
     toast('La date de début doit précéder la date de fin.');
     return;
   }
-
-  const rows = [...(store.transactions || [])]
-    .filter(t => String(t.Date || '').slice(0,10) >= dateFrom && String(t.Date || '').slice(0,10) <= dateTo)
-    .sort((a,b) => String(a.Date || '').localeCompare(String(b.Date || '')) || String(a.Horodatage || '').localeCompare(String(b.Horodatage || '')));
-
   if(!rows.length){
-    toast('Aucun mouvement sur cette période.');
+    toast('Aucun mouvement à imprimer avec ces filtres.');
     return;
   }
 
-  const revenus = rows.filter(t => t.Type === 'Revenu').reduce((s,t) => s + Number(t.Montant || 0), 0);
-  const depenses = rows.filter(t => t.Type === 'Dépense').reduce((s,t) => s + Number(t.Montant || 0), 0);
-  const soldeFinal = revenus - depenses;
+  const sorted = rows.slice().sort(byDateAsc);
+  const { revenus, depenses, solde } = txTotals(sorted);
+  const periodFrom = filters.dateFrom || dateOnly(sorted[0].Date);
+  const periodTo = filters.dateTo || dateOnly(sorted[sorted.length - 1].Date);
+  const iconOf = (list, nom) => { const x = (list || []).find(o => o.Nom === nom); return x && x.Icone ? x.Icone + ' ' : ''; };
+  const chips = [
+    filters.categorie ? `Catégorie : ${iconOf(store.categories, filters.categorie)}${filters.categorie}` : 'Toutes catégories',
+    filters.foyer ? `Foyer : ${iconOf(store.foyers, filters.foyer)}${filters.foyer}` : 'Tous les foyers',
+  ];
+  const amount = (n, cls) => n ? `<span class="${cls}">${fmt(n)} Ar</span>` : '<span class="zero">0 Ar</span>';
 
   let soldeCumulatif = 0;
-  const movementRows = rows.map(t => {
+  const body = sorted.map(t => {
     const montant = Number(t.Montant || 0);
-    soldeCumulatif += t.Type === 'Revenu' ? montant : -montant;
+    const isRevenu = t.Type === 'Revenu';
+    soldeCumulatif += isRevenu ? montant : -montant;
     return `<tr>
-      <td>${reportDateFr(t.Date)}</td><td>${reportDateTimeFr(t.Horodatage)}</td>
-      <td>${reportEscape(t.Categorie || '—')}</td><td>${reportEscape(t.SousCategorie || '—')}</td>
-      <td>${reportEscape(t.Description || '—')}</td>
-      <td class="num expense">${t.Type==='Dépense' ? fmt(montant) : '0'} Ar</td>
-      <td class="num income">${t.Type==='Revenu' ? fmt(montant) : '0'} Ar</td>
-      <td class="num ${soldeCumulatif<0?'negative':''}">${fmt(soldeCumulatif)} Ar</td>
+      <td class="date">${dateFr(t.Date)}</td>
+      <td>${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
+      <td>${reportEscape(t.SousCategorie || '—')}</td>
+      <td class="desc">${reportEscape(t.Description || '—')}</td>
+      <td class="num">${isRevenu ? amount(0) : amount(montant, 'expense')}</td>
+      <td class="num">${isRevenu ? amount(montant, 'income') : amount(0)}</td>
+      <td class="num solde ${soldeCumulatif < 0 ? 'negative' : ''}">${fmt(soldeCumulatif)} Ar</td>
+      <td class="stamp">${reportEscape(stampFr(t.Horodatage) || '—')}</td>
     </tr>`;
   }).join('');
 
-  const reportWindow = window.open('', '_blank');
-  if(!reportWindow){
-    toast("Autorise les fenêtres contextuelles pour imprimer le bilan.");
-    return;
-  }
-  reportWindow.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bilan du ${reportDateFr(dateFrom)} au ${reportDateFr(dateTo)}</title><style>
-    @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;font-size:9px}h1{font-size:22px;margin:0;color:#081b33}h2{font-size:14px;margin:22px 0 8px;color:#081b33}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1f70c1;padding-bottom:12px}.brand{font-weight:800;color:#1f70c1;font-size:15px}.period{margin-top:5px;color:#5b6472}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0}.kpi{border:1px solid #dbe2ea;border-radius:8px;padding:10px;background:#f7f9fc}.kpi span{display:block;color:#657083;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em}.kpi strong{display:block;margin-top:5px;font-size:14px}.income{color:#17824b}.expense{color:#c33b48}.negative{color:#c33b48}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid}th{background:#081b33;color:#fff;text-align:left;padding:5px 4px;font-size:8px}td{border-bottom:1px solid #e1e6ed;padding:4px;vertical-align:top}.num{text-align:right;white-space:nowrap}.footer{margin-top:14px;padding-top:8px;border-top:1px solid #cfd6df;color:#697386;font-size:8.5px;text-align:right}@media print{.no-print{display:none!important}}
-  </style></head><body>
-    <header class="head"><div><div class="brand">EXCELLTOUT</div><h1>Bilan des mouvements</h1><div class="period">Du ${reportDateFr(dateFrom)} au ${reportDateFr(dateTo)}</div></div><div>Édité le ${new Date().toLocaleDateString('fr-FR')}</div></header>
-    <section class="summary"><div class="kpi"><span>Mouvements</span><strong>${rows.length}</strong></div><div class="kpi"><span>Total revenus</span><strong class="income">${fmt(revenus)} Ar</strong></div><div class="kpi"><span>Total dépenses</span><strong class="expense">${fmt(depenses)} Ar</strong></div><div class="kpi"><span>Solde final</span><strong class="${soldeFinal<0?'negative':''}">${fmt(soldeFinal)} Ar</strong></div></section>
-    <h2>Détail de tous les mouvements</h2><table><thead><tr><th>Date</th><th>Date d'intégration</th><th>Catégorie</th><th>Sous-catégorie</th><th>Description</th><th class="num">Dépense</th><th class="num">Revenu</th><th class="num">Solde</th></tr></thead><tbody>${movementRows}</tbody></table>
-    <div class="footer">Bilan généré depuis Excelltout — Budget familial</div>
-  </body></html>`);
-  reportWindow.document.close();
-  reportWindow.focus();
-  setTimeout(() => reportWindow.print(), 300);
+  $('#print-report').innerHTML = `
+    <header class="pr-head">
+      <div class="pr-brand">
+        <img src="icons/icon-192.png" alt="">
+        <div>
+          <div class="pr-kicker">Excelltout · Budget familial</div>
+          <h1>Bilan des mouvements</h1>
+          <div class="pr-period">Du ${dateFr(periodFrom)} au ${dateFr(periodTo)}</div>
+        </div>
+      </div>
+      <div class="pr-meta">
+        <div>Édité le ${stampFr(new Date().toISOString())}</div>
+        <div class="pr-chips">${chips.map(c => `<span>${reportEscape(c)}</span>`).join('')}</div>
+      </div>
+    </header>
+    <section class="pr-kpis">
+      <div class="pr-kpi"><span>Mouvements</span><strong>${sorted.length}</strong></div>
+      <div class="pr-kpi income"><span>Total revenus</span><strong>${fmt(revenus)} Ar</strong></div>
+      <div class="pr-kpi expense"><span>Total dépenses</span><strong>${fmt(depenses)} Ar</strong></div>
+      <div class="pr-kpi ${solde < 0 ? 'expense' : 'balance'}"><span>Solde final</span><strong>${fmt(solde)} Ar</strong></div>
+    </section>
+    <div class="pr-section"><h2>Détail des mouvements</h2><span>Du plus ancien au plus récent · solde cumulé à partir de zéro</span></div>
+    <table class="pr-table">
+      <thead><tr><th>Date</th><th>Catégorie</th><th>Sous-catégorie</th><th>Description</th><th class="num">Dépense</th><th class="num">Revenu</th><th class="num">Solde</th><th>Date d'intégration</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><td colspan="4">Totaux de la période</td><td class="num expense">${fmt(depenses)} Ar</td><td class="num income">${fmt(revenus)} Ar</td><td class="num ${solde < 0 ? 'negative' : ''}">${fmt(solde)} Ar</td><td></td></tr></tfoot>
+    </table>
+    <footer class="pr-foot">Bilan généré depuis Excelltout — Budget familial</footer>`;
+
+  // Le titre de la page devient le nom proposé pour le fichier PDF.
+  const previousTitle = document.title;
+  document.title = `Bilan Excelltout du ${dateFr(periodFrom).replace(/\//g,'-')} au ${dateFr(periodTo).replace(/\//g,'-')}`;
+  window.addEventListener('afterprint', () => { document.title = previousTitle; }, { once:true });
+  document.body.classList.add('printing-report');
+  const logo = $('#print-report img');
+  Promise.resolve(logo && logo.decode ? logo.decode().catch(() => {}) : null).then(() => window.print());
 }
 
 function renderTransactions(){
-  const foyerF = $('#tx-filter-foyer').value;
-  const catF = $('#tx-filter-categorie').value;
-  const dateFrom = $('#tx-filter-date-from').value;
-  const dateTo = $('#tx-filter-date-to').value;
+  const { rows, filters } = getFilteredTransactions();
   const sortMode = $('#tx-sort').value;
   const pageSizeRaw = $('#tx-page-size').value;
 
-  let rows = [...(store.transactions||[])]
-    .filter(t => !foyerF || t.Foyer === foyerF)
-    .filter(t => !catF || t.Categorie === catF)
-    .filter(t => !dateFrom || String(t.Date).slice(0,10) >= dateFrom)
-    .filter(t => !dateTo || String(t.Date).slice(0,10) <= dateTo);
-
   const sorters = {
-    'date-desc': (a,b) => new Date(b.Date) - new Date(a.Date),
-    'date-asc': (a,b) => new Date(a.Date) - new Date(b.Date),
+    'date-desc': (a,b) => byDateAsc(b,a),
+    'date-asc': byDateAsc,
     'montant-desc': (a,b) => Number(b.Montant) - Number(a.Montant),
     'montant-asc': (a,b) => Number(a.Montant) - Number(b.Montant),
   };
@@ -2272,10 +2385,20 @@ function renderTransactions(){
     pagination.style.display = 'none';
   }
 
+  const { revenus, depenses, solde } = txTotals(rows);
+  const summary = $('#tx-summary');
+  summary.style.display = total ? 'flex' : 'none';
+  summary.innerHTML = `
+    <span>${total} transaction${total > 1 ? 's' : ''}${Object.values(filters).some(Boolean) ? ' filtrée' + (total > 1 ? 's' : '') : ''}</span>
+    <span>Revenus <b class="mono amount-pos">+${fmt(revenus)} Ar</b></span>
+    <span>Dépenses <b class="mono amount-neg">-${fmt(depenses)} Ar</b></span>
+    <span>Solde <b class="mono ${solde < 0 ? 'amount-neg' : 'amount-pos'}">${fmt(solde)} Ar</b></span>`;
+
   $('#tx-empty').style.display = pageRows.length ? 'none' : 'block';
+  $('#tx-empty-text').textContent = (store.transactions || []).length ? 'Aucune transaction ne correspond aux filtres.' : "Aucune transaction pour l'instant.";
   $('#tx-table tbody').innerHTML = pageRows.map(t => `
     <tr>
-      <td class="mono">${t.Date}${t.Horodatage ? `<div style="font-size:10.5px; color:var(--muted); font-weight:400;">saisi ${String(t.Horodatage).slice(11,16)}</div>` : ''}</td>
+      <td class="mono" style="white-space:nowrap;"${t.Horodatage ? ` title="Saisie le ${stampFr(t.Horodatage)}"` : ''}>${dateFr(t.Date)}</td>
       <td>${t.Membre}</td>
       <td>${t.Foyer ? `<span class="tag">${t.Foyer}</span>` : ''}</td>
       <td><span class="tag">${t.Categorie}</span></td>
@@ -2298,7 +2421,7 @@ function renderTransactions(){
   $$('.tx-edit').forEach(b => b.addEventListener('click', () => {
     const t = store.transactions.find(x => x.ID === b.dataset.id);
     const sousCatOptions = store.sousCategories.filter(s => s.Categorie === t.Categorie);
-    openGenericModal(`Modifier la transaction du ${t.Date}`, [
+    openGenericModal(`Modifier la transaction du ${dateFr(t.Date)}`, [
       { key:'date', label:'Date', type:'date', value:t.Date ? String(t.Date).slice(0,10) : '' },
       { key:'type', label:'Type', type:'select', value:t.Type, options:[{value:'Dépense',label:'Dépense'},{value:'Revenu',label:'Revenu'}] },
       { key:'categorie', label:'Catégorie', type:'select', value:t.Categorie, options: store.categories.map(c=>({value:c.Nom,label:`${c.Icone||''} ${c.Nom}`})) },
@@ -2698,6 +2821,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'07/11/2026', motif:'Dates de l’historique et bilan imprimé', description:"L'historique des transactions affiche la date de la transaction (JJ/MM/AAAA) au lieu de l'horodatage brut ; la date d'intégration reste visible au survol et dans le bilan, à l'heure locale. Un résumé (nombre, revenus, dépenses, solde) suit les filtres. Le bilan imprimé reprend exactement les filtres du tableau (dates, catégorie, foyer), fonctionne sans dates obligatoires, et adopte une nouvelle mise en page : en-tête avec logo, filtres appliqués, indicateurs colorés, lignes alternées, totaux et numéros de page.", version:'1.36' },
   { date:'24/09/2026', motif:"Bouton d'installation de l'application", description:"Hébergement déplacé vers GitHub Pages. Ajout d'un bouton « Installer l'application » sur l'écran de connexion et d'une barre d'installation masquable dans l'application : l'installation se lance d'un clic quand le navigateur le permet, sinon une aide pas à pas s'affiche (ouverture dans Chrome, menu ⋮, iPhone), avec copie du lien.", version:'1.35' },
   { date:'23/09/2026', motif:'Enregistrement accéléré et file modifiable', description:"Accélération de l'enregistrement et de la synchronisation par traitement simultané contrôlé. Le compteur des données non synchronisées ouvre désormais leur détail, avec possibilité de modifier ou de retirer chaque entrée avant l'envoi.", version:'1.34' },
   { date:'22/09/2026', motif:'Bilan financier épuré', description:"Suppression des colonnes Membre et Foyer dans le tableau détaillé du bilan PDF.", version:'1.33' },
