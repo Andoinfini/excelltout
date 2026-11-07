@@ -588,8 +588,16 @@
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <input type="date" id="tx-filter-date-from" title="Du" style="width:auto; padding:6px 8px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
             <input type="date" id="tx-filter-date-to" title="Au" style="width:auto; padding:6px 8px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
+            <select id="tx-filter-type" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
+              <option value="">Tous types</option>
+              <option value="Dépense">Dépenses</option>
+              <option value="Revenu">Revenus</option>
+            </select>
             <select id="tx-filter-categorie" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
               <option value="">Toutes catégories</option>
+            </select>
+            <select id="tx-filter-souscategorie" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
+              <option value="">Toutes sous-catégories</option>
             </select>
             <select id="tx-filter-foyer" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
               <option value="">Tous les foyers</option>
@@ -1839,6 +1847,7 @@ function populateSelectors(){
   const currentCatFilter = catFilterSel.value;
   catFilterSel.innerHTML = '<option value="">Toutes catégories</option>' + store.categories.map(c => `<option value="${c.Nom}">${c.Icone||''} ${c.Nom}</option>`).join('');
   catFilterSel.value = store.categories.some(c=>c.Nom===currentCatFilter) ? currentCatFilter : '';
+  updateSousCategorieFilterOptions();
 
   const dashFilterSel = $('#dash-filter-foyer');
   const goalsFilterSel = $('#goals-filter-foyer');
@@ -1858,6 +1867,24 @@ function updateSousCategorieOptions(){
   const sousSel = $('#tx-souscategorie');
   const options = store.sousCategories.filter(s => s.Categorie === catSel.value);
   sousSel.innerHTML = '<option value="">—</option>' + options.map(s => `<option value="${s.Nom}">${s.Icone||''} ${s.Nom}</option>`).join('');
+}
+
+const SANS_SOUS_CATEGORIE = '__aucune__';
+
+// Filtre de l'historique : sous-catégories de la catégorie filtrée (ou toutes), y compris celles
+// qui n'existent plus dans les réglages mais figurent encore sur d'anciennes transactions.
+function updateSousCategorieFilterOptions(){
+  const sel = $('#tx-filter-souscategorie');
+  const cat = $('#tx-filter-categorie').value;
+  const current = sel.value;
+  const icons = {};
+  (store.sousCategories || []).filter(s => !cat || s.Categorie === cat).forEach(s => { icons[s.Nom] = s.Icone || ''; });
+  (store.transactions || []).filter(t => t.SousCategorie && (!cat || t.Categorie === cat)).forEach(t => { if(!(t.SousCategorie in icons)) icons[t.SousCategorie] = ''; });
+  const noms = Object.keys(icons).sort((a,b) => a.localeCompare(b, 'fr'));
+  sel.innerHTML = '<option value="">Toutes sous-catégories</option>'
+    + noms.map(n => `<option value="${reportEscape(n)}">${reportEscape((icons[n] ? icons[n] + ' ' : '') + n)}</option>`).join('')
+    + `<option value="${SANS_SOUS_CATEGORIE}">— Sans sous-catégorie</option>`;
+  sel.value = current === SANS_SOUS_CATEGORIE || noms.includes(current) ? current : '';
 }
 
 /* ============================================================
@@ -2224,14 +2251,19 @@ $('#tx-form').addEventListener('submit', async (e) => {
 let txCurrentPage = 1;
 
 $('#tx-filter-foyer').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
-$('#tx-filter-categorie').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
+$('#tx-filter-categorie').addEventListener('change', () => { updateSousCategorieFilterOptions(); txCurrentPage = 1; renderTransactions(); });
+$('#tx-filter-souscategorie').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
+$('#tx-filter-type').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-date-from').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-date-to').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-sort').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-page-size').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-reset').addEventListener('click', () => {
   $('#tx-filter-foyer').value = '';
+  $('#tx-filter-type').value = '';
   $('#tx-filter-categorie').value = '';
+  $('#tx-filter-souscategorie').value = '';
+  updateSousCategorieFilterOptions();
   $('#tx-filter-date-from').value = '';
   $('#tx-filter-date-to').value = '';
   $('#tx-sort').value = 'date-desc';
@@ -2253,13 +2285,18 @@ function reportEscape(value){
 function getFilteredTransactions(){
   const filters = {
     foyer: $('#tx-filter-foyer').value,
+    type: $('#tx-filter-type').value,
     categorie: $('#tx-filter-categorie').value,
+    sousCategorie: $('#tx-filter-souscategorie').value,
     dateFrom: $('#tx-filter-date-from').value,
     dateTo: $('#tx-filter-date-to').value,
   };
   const rows = (store.transactions || [])
     .filter(t => !filters.foyer || t.Foyer === filters.foyer)
+    .filter(t => !filters.type || t.Type === filters.type)
     .filter(t => !filters.categorie || t.Categorie === filters.categorie)
+    .filter(t => !filters.sousCategorie
+      || (filters.sousCategorie === SANS_SOUS_CATEGORIE ? !t.SousCategorie : t.SousCategorie === filters.sousCategorie))
     .filter(t => !filters.dateFrom || dateOnly(t.Date) >= filters.dateFrom)
     .filter(t => !filters.dateTo || dateOnly(t.Date) <= filters.dateTo);
   return { rows, filters };
@@ -2294,9 +2331,12 @@ function printTransactionReport(){
   const periodTo = filters.dateTo || dateOnly(sorted[sorted.length - 1].Date);
   const iconOf = (list, nom) => { const x = (list || []).find(o => o.Nom === nom); return x && x.Icone ? x.Icone + ' ' : ''; };
   const chips = [
+    filters.type ? (filters.type === 'Revenu' ? 'Revenus uniquement' : 'Dépenses uniquement') : '',
     filters.categorie ? `Catégorie : ${iconOf(store.categories, filters.categorie)}${filters.categorie}` : 'Toutes catégories',
+    filters.sousCategorie === SANS_SOUS_CATEGORIE ? 'Sans sous-catégorie'
+      : filters.sousCategorie ? `Sous-catégorie : ${iconOf(store.sousCategories, filters.sousCategorie)}${filters.sousCategorie}` : '',
     filters.foyer ? `Foyer : ${iconOf(store.foyers, filters.foyer)}${filters.foyer}` : 'Tous les foyers',
-  ];
+  ].filter(Boolean);
   const amount = (n, cls) => n ? `<span class="${cls}">${fmt(n)} Ar</span>` : '<span class="zero">0 Ar</span>';
 
   let soldeCumulatif = 0;
@@ -2390,8 +2430,8 @@ function renderTransactions(){
   summary.style.display = total ? 'flex' : 'none';
   summary.innerHTML = `
     <span>${total} transaction${total > 1 ? 's' : ''}${Object.values(filters).some(Boolean) ? ' filtrée' + (total > 1 ? 's' : '') : ''}</span>
-    <span>Revenus <b class="mono amount-pos">+${fmt(revenus)} Ar</b></span>
-    <span>Dépenses <b class="mono amount-neg">-${fmt(depenses)} Ar</b></span>
+    <span>Revenus <b class="mono amount-pos">${revenus ? '+' : ''}${fmt(revenus)} Ar</b></span>
+    <span>Dépenses <b class="mono amount-neg">${depenses ? '-' : ''}${fmt(depenses)} Ar</b></span>
     <span>Solde <b class="mono ${solde < 0 ? 'amount-neg' : 'amount-pos'}">${fmt(solde)} Ar</b></span>`;
 
   $('#tx-empty').style.display = pageRows.length ? 'none' : 'block';
@@ -2821,6 +2861,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'07/11/2026', motif:'Filtres par type et sous-catégorie', description:"Ajout de deux filtres dans l'historique des transactions : par type (dépenses ou revenus) et par sous-catégorie, avec une option « Sans sous-catégorie ». La liste des sous-catégories suit la catégorie choisie. Les deux filtres s'appliquent au tableau, au résumé et au bilan imprimé, où ils apparaissent dans l'en-tête.", version:'1.37' },
   { date:'07/11/2026', motif:'Dates de l’historique et bilan imprimé', description:"L'historique des transactions affiche la date de la transaction (JJ/MM/AAAA) au lieu de l'horodatage brut ; la date d'intégration reste visible au survol et dans le bilan, à l'heure locale. Un résumé (nombre, revenus, dépenses, solde) suit les filtres. Le bilan imprimé reprend exactement les filtres du tableau (dates, catégorie, foyer), fonctionne sans dates obligatoires, et adopte une nouvelle mise en page : en-tête avec logo, filtres appliqués, indicateurs colorés, lignes alternées, totaux et numéros de page.", version:'1.36' },
   { date:'24/09/2026', motif:"Bouton d'installation de l'application", description:"Hébergement déplacé vers GitHub Pages. Ajout d'un bouton « Installer l'application » sur l'écran de connexion et d'une barre d'installation masquable dans l'application : l'installation se lance d'un clic quand le navigateur le permet, sinon une aide pas à pas s'affiche (ouverture dans Chrome, menu ⋮, iPhone), avec copie du lien.", version:'1.35' },
   { date:'23/09/2026', motif:'Enregistrement accéléré et file modifiable', description:"Accélération de l'enregistrement et de la synchronisation par traitement simultané contrôlé. Le compteur des données non synchronisées ouvre désormais leur détail, avec possibilité de modifier ou de retirer chaque entrée avant l'envoi.", version:'1.34' },
