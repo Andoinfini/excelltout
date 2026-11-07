@@ -1817,7 +1817,9 @@ function applyDemoFoyerScope(){
 
 function populateSelectors(){
   const catSel = $('#tx-categorie');
+  const currentCat = catSel.value;
   catSel.innerHTML = store.categories.map(c => `<option value="${c.Nom}">${c.Icone||''} ${c.Nom}</option>`).join('') || '<option>Aucune catégorie</option>';
+  if(store.categories.some(c => c.Nom === currentCat)) catSel.value = currentCat;
   const memSel = $('#tx-membre');
   if(roleOf() === 'admin' || roleOf() === 'superadmin'){
     memSel.innerHTML = store.membres.map(m => `<option value="${m.nom}">${m.nom}</option>`).join('');
@@ -1865,8 +1867,10 @@ function populateSelectors(){
 function updateSousCategorieOptions(){
   const catSel = $('#tx-categorie');
   const sousSel = $('#tx-souscategorie');
+  const current = sousSel.value;
   const options = store.sousCategories.filter(s => s.Categorie === catSel.value);
   sousSel.innerHTML = '<option value="">—</option>' + options.map(s => `<option value="${s.Nom}">${s.Icone||''} ${s.Nom}</option>`).join('');
+  if(options.some(s => s.Nom === current)) sousSel.value = current;
 }
 
 const SANS_SOUS_CATEGORIE = '__aucune__';
@@ -2238,7 +2242,10 @@ $('#tx-form').addEventListener('submit', async (e) => {
     const data = await api('addTransaction', payload);
     if(data && data.success){
       toast(payload.objectifId ? 'Transaction ajoutée, objectif mis à jour.' : 'Transaction ajoutée.');
-      e.target.reset(); $('#tx-date').value = todayISO();
+      // On garde la date, le type, la catégorie et la sous-catégorie pour enchaîner les saisies.
+      const keep = ['#tx-date', '#tx-type', '#tx-categorie', '#tx-souscategorie'].map(sel => [sel, $(sel).value]);
+      e.target.reset();
+      keep.forEach(([sel, value]) => { $(sel).value = value; });
       await loadData();
     } else {
       toast(data && data.message ? data.message : (data && data.error) || 'Le script a renvoyé une erreur.');
@@ -2861,6 +2868,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'07/11/2026', motif:'Saisie en série des transactions', description:"Après un clic sur « Ajouter », la date, le type, la catégorie et la sous-catégorie choisis restent sélectionnés pour enchaîner les saisies ; seuls le montant, la description et les autres champs sont vidés.", version:'1.38' },
   { date:'07/11/2026', motif:'Filtres par type et sous-catégorie', description:"Ajout de deux filtres dans l'historique des transactions : par type (dépenses ou revenus) et par sous-catégorie, avec une option « Sans sous-catégorie ». La liste des sous-catégories suit la catégorie choisie. Les deux filtres s'appliquent au tableau, au résumé et au bilan imprimé, où ils apparaissent dans l'en-tête.", version:'1.37' },
   { date:'07/11/2026', motif:'Dates de l’historique et bilan imprimé', description:"L'historique des transactions affiche la date de la transaction (JJ/MM/AAAA) au lieu de l'horodatage brut ; la date d'intégration reste visible au survol et dans le bilan, à l'heure locale. Un résumé (nombre, revenus, dépenses, solde) suit les filtres. Le bilan imprimé reprend exactement les filtres du tableau (dates, catégorie, foyer), fonctionne sans dates obligatoires, et adopte une nouvelle mise en page : en-tête avec logo, filtres appliqués, indicateurs colorés, lignes alternées, totaux et numéros de page.", version:'1.36' },
   { date:'24/09/2026', motif:"Bouton d'installation de l'application", description:"Hébergement déplacé vers GitHub Pages. Ajout d'un bouton « Installer l'application » sur l'écran de connexion et d'une barre d'installation masquable dans l'application : l'installation se lance d'un clic quand le navigateur le permet, sinon une aide pas à pas s'affiche (ouverture dans Chrome, menu ⋮, iPhone), avec copie du lien.", version:'1.35' },
