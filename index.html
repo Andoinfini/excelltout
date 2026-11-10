@@ -271,6 +271,7 @@
   #print-report .pr-table tbody tr:nth-child(even) td{ background:#F6F8FB; }
   #print-report .pr-table .date{ font-weight:600; white-space:nowrap; }
   #print-report .pr-table .desc{ color:#2D3748; }
+  #print-report .pr-table .desc .sub{ margin-top:2px; font-size:7.5pt; color:#6B778C; }
   #print-report .pr-table .num{ text-align:right; white-space:nowrap; font-family:'IBM Plex Mono', monospace; }
   #print-report .pr-table .solde{ font-weight:600; }
   #print-report .pr-table .stamp{ white-space:nowrap; font-size:7.5pt; color:#8A94A6; }
@@ -574,6 +575,10 @@
             <div class="field" style="margin:0;"><label>Membre</label><select id="tx-membre"></select></div>
             <div class="field" style="margin:0;"><label>Foyer</label><select id="tx-foyer"><option value="">—</option></select></div>
             <div class="field" style="margin:0;"><label>Montant (Ar)</label><input type="number" id="tx-montant" min="0" step="1" required></div>
+          </div>
+          <div class="form-row">
+            <div class="field" style="margin:0; grid-column:span 2;"><label>Commentaire — remis par / remis à</label><input type="text" id="tx-commentaire" placeholder="Ex : remis par Rakoto à Rabe"></div>
+            <div class="field" style="margin:0;"><label>Date de remise en main propre</label><input type="date" id="tx-date-remise"></div>
           </div>
           <div class="form-row">
             <div class="field" style="margin:0;"><label>Objectif d'épargne lié</label><select id="tx-objectif"><option value="">Aucun</option></select></div>
@@ -1093,7 +1098,17 @@ function stampFr(value){
   return `${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
 }
 function normalizeTransactionDates(){
-  (store.transactions || []).forEach(t => { t.Date = dateOnly(t.Date); });
+  (store.transactions || []).forEach(t => {
+    t.Date = dateOnly(t.Date);
+    if(t.DateRemise) t.DateRemise = dateOnly(t.DateRemise);
+  });
+}
+// Ligne « remis par / remis à » et date de remise en main propre d'une transaction (texte brut).
+function remiseInfo(t){
+  return [
+    t.Commentaire ? `💬 ${t.Commentaire}` : '',
+    t.DateRemise ? `🤝 Remis en main propre le ${dateFr(t.DateRemise)}` : '',
+  ].filter(Boolean).join(' · ');
 }
 
 function toast(msg){
@@ -1144,6 +1159,7 @@ function applyOptimistic(action, payload, localId){
       store.transactions.push({ ID:localId, Date:payload.date, Membre:payload.membre, Type:payload.type,
         Categorie:payload.categorie, SousCategorie:payload.sousCategorie||'', Montant:Number(payload.montant),
         Description:payload.description||'', Foyer:payload.foyer||'', ObjectifID:payload.objectifId||'',
+        Commentaire:payload.commentaire||'', DateRemise:payload.dateRemise||'',
         Horodatage:new Date().toISOString(), _pending:true });
       break;
     case 'updateTransaction': {
@@ -1151,6 +1167,8 @@ function applyOptimistic(action, payload, localId){
       if(t) Object.assign(t, { Date:payload.date, Membre:payload.membre, Type:payload.type, Categorie:payload.categorie,
         SousCategorie:payload.sousCategorie||'', Montant:Number(payload.montant), Description:payload.description||'',
         Foyer:payload.foyer||'', ObjectifID:payload.objectifId||'', _pending:true });
+      if(t && payload.commentaire !== undefined) t.Commentaire = payload.commentaire;
+      if(t && payload.dateRemise !== undefined) t.DateRemise = payload.dateRemise;
       break;
     }
     case 'deleteTransaction':
@@ -1343,7 +1361,9 @@ function pendingFields(item){
       {key:'sousCategorie',label:'Sous-catégorie',value:p.sousCategorie||''},
       {key:'membre',label:'Membre',value:p.membre||''}, {key:'foyer',label:'Foyer',value:p.foyer||''},
       {key:'montant',label:'Montant (Ar)',type:'number',value:p.montant||0},
-      {key:'description',label:'Description',value:p.description||''}
+      {key:'description',label:'Description',value:p.description||''},
+      {key:'commentaire',label:'Commentaire — remis par / remis à',value:p.commentaire||''},
+      {key:'dateRemise',label:'Date de remise en main propre',type:'date',value:p.dateRemise||''}
     ];
   }
   return Object.keys(p).filter(k => String(p[k] ?? '').length < 500).map(k => ({
@@ -1362,10 +1382,10 @@ function editPendingItem(localId){
     });
     if(item.action === 'addTransaction'){
       const t = (store.transactions||[]).find(x => x.ID === item.localId);
-      if(t) Object.assign(t, {Date:item.payload.date,Membre:item.payload.membre,Type:item.payload.type,Categorie:item.payload.categorie,SousCategorie:item.payload.sousCategorie||'',Montant:Number(item.payload.montant),Description:item.payload.description||'',Foyer:item.payload.foyer||''});
+      if(t) Object.assign(t, {Date:item.payload.date,Membre:item.payload.membre,Type:item.payload.type,Categorie:item.payload.categorie,SousCategorie:item.payload.sousCategorie||'',Montant:Number(item.payload.montant),Description:item.payload.description||'',Foyer:item.payload.foyer||'',Commentaire:item.payload.commentaire||'',DateRemise:item.payload.dateRemise||''});
     } else if(item.action === 'updateTransaction'){
       const t = (store.transactions||[]).find(x => x.ID === item.payload.id);
-      if(t) Object.assign(t, {Date:item.payload.date,Membre:item.payload.membre,Type:item.payload.type,Categorie:item.payload.categorie,SousCategorie:item.payload.sousCategorie||'',Montant:Number(item.payload.montant),Description:item.payload.description||'',Foyer:item.payload.foyer||''});
+      if(t) Object.assign(t, {Date:item.payload.date,Membre:item.payload.membre,Type:item.payload.type,Categorie:item.payload.categorie,SousCategorie:item.payload.sousCategorie||'',Montant:Number(item.payload.montant),Description:item.payload.description||'',Foyer:item.payload.foyer||'',Commentaire:item.payload.commentaire||'',DateRemise:item.payload.dateRemise||''});
     }
     if(activePendingQueueKind === 'demo'){ saveDemoQueue(); localStorage.setItem('demo_local_store', JSON.stringify(store)); updateDemoSaveButton(); }
     else { saveQueue(); saveStoreCache(); updateOfflineBanner(); }
@@ -2236,7 +2256,8 @@ $('#tx-form').addEventListener('submit', async (e) => {
     date: $('#tx-date').value, type: $('#tx-type').value, categorie: $('#tx-categorie').value,
     sousCategorie: $('#tx-souscategorie').value, membre: $('#tx-membre').value,
     foyer: $('#tx-foyer').value, objectifId: $('#tx-objectif').value,
-    montant: Number($('#tx-montant').value), description: $('#tx-desc').value
+    montant: Number($('#tx-montant').value), description: $('#tx-desc').value,
+    commentaire: $('#tx-commentaire').value.trim(), dateRemise: $('#tx-date-remise').value
   };
   try{
     const data = await api('addTransaction', payload);
@@ -2355,7 +2376,7 @@ function printTransactionReport(){
       <td class="date">${dateFr(t.Date)}</td>
       <td>${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
       <td>${reportEscape(t.SousCategorie || '—')}</td>
-      <td class="desc">${reportEscape(t.Description || '—')}</td>
+      <td class="desc">${reportEscape(t.Description || '—')}${remiseInfo(t) ? `<div class="sub">${reportEscape(remiseInfo(t))}</div>` : ''}</td>
       <td class="num">${isRevenu ? amount(0) : amount(montant, 'expense')}</td>
       <td class="num">${isRevenu ? amount(montant, 'income') : amount(0)}</td>
       <td class="num solde ${soldeCumulatif < 0 ? 'negative' : ''}">${fmt(soldeCumulatif)} Ar</td>
@@ -2450,7 +2471,7 @@ function renderTransactions(){
       <td>${t.Foyer ? `<span class="tag">${t.Foyer}</span>` : ''}</td>
       <td><span class="tag">${t.Categorie}</span></td>
       <td>${t.SousCategorie||''}</td>
-      <td>${t.Description||''}${t.ObjectifID ? ' 🏆' : ''}</td>
+      <td>${t.Description||''}${t.ObjectifID ? ' 🏆' : ''}${remiseInfo(t) ? `<div style="font-size:11.5px; color:var(--muted); margin-top:3px;">${reportEscape(remiseInfo(t))}</div>` : ''}</td>
       <td class="mono ${t.Type==='Revenu'?'amount-pos':'amount-neg'}">${t.Type==='Revenu'?'+':'-'}${fmt(t.Montant)} Ar</td>
       <td>
         <button class="row-del tx-edit" data-id="${t.ID}" title="Modifier">${ICON_EDIT}</button>
@@ -2477,7 +2498,9 @@ function renderTransactions(){
       { key:'foyer', label:'Foyer', type:'select', value:t.Foyer||'', options:[{value:'',label:'—'}].concat((store.foyers||[]).map(f=>({value:f.Nom,label:f.Nom}))) },
       { key:'objectifId', label:"Objectif d'épargne lié", type:'select', value:t.ObjectifID||'', options:[{value:'',label:'Aucun'}].concat((store.objectifs||[]).map(o=>({value:o.ID,label:o.Nom}))) },
       { key:'montant', label:'Montant (Ar)', type:'number', value:t.Montant },
-      { key:'description', label:'Description', value:t.Description||'' }
+      { key:'description', label:'Description', value:t.Description||'' },
+      { key:'commentaire', label:'Commentaire — remis par / remis à', value:t.Commentaire||'' },
+      { key:'dateRemise', label:'Date de remise en main propre', type:'date', value:t.DateRemise ? dateOnly(t.DateRemise) : '' }
     ], async (v) => {
       const data = await api('updateTransaction', { id:t.ID, ...v });
       if(data.success){ toast('Transaction modifiée.'); await loadData(); }
@@ -2868,6 +2891,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'10/11/2026', motif:'Remise en main propre', description:"Ajout de deux champs aux transactions : un commentaire pour noter qui a remis l'argent et à qui il a été remis, et la date de cette remise en main propre. Ils se saisissent dans le formulaire, se modifient avec ✏️ et s'affichent sous la description dans l'historique et dans le bilan imprimé.", version:'1.39' },
   { date:'07/11/2026', motif:'Saisie en série des transactions', description:"Après un clic sur « Ajouter », la date, le type, la catégorie et la sous-catégorie choisis restent sélectionnés pour enchaîner les saisies ; seuls le montant, la description et les autres champs sont vidés.", version:'1.38' },
   { date:'07/11/2026', motif:'Filtres par type et sous-catégorie', description:"Ajout de deux filtres dans l'historique des transactions : par type (dépenses ou revenus) et par sous-catégorie, avec une option « Sans sous-catégorie ». La liste des sous-catégories suit la catégorie choisie. Les deux filtres s'appliquent au tableau, au résumé et au bilan imprimé, où ils apparaissent dans l'en-tête.", version:'1.37' },
   { date:'07/11/2026', motif:'Dates de l’historique et bilan imprimé', description:"L'historique des transactions affiche la date de la transaction (JJ/MM/AAAA) au lieu de l'horodatage brut ; la date d'intégration reste visible au survol et dans le bilan, à l'heure locale. Un résumé (nombre, revenus, dépenses, solde) suit les filtres. Le bilan imprimé reprend exactement les filtres du tableau (dates, catégorie, foyer), fonctionne sans dates obligatoires, et adopte une nouvelle mise en page : en-tête avec logo, filtres appliqués, indicateurs colorés, lignes alternées, totaux et numéros de page.", version:'1.36' },
