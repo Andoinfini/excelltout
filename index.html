@@ -229,6 +229,13 @@
   /* ---------- Historique : résumé de la sélection ---------- */
   #tx-summary{ flex-wrap:wrap; gap:6px 18px; font-size:12.5px; color:var(--muted); margin:-2px 0 12px; }
   #tx-summary b{ font-weight:600; }
+  /* Regroupement par « remis par / remis à » */
+  #tx-table .tx-group-row td{ background:var(--surface-2); border-top:2px solid var(--border); padding:9px 12px; }
+  .tx-group-head{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:4px 16px; }
+  .tx-group-name{ font-weight:600; }
+  .tx-group-suite{ font-weight:400; font-size:11.5px; color:var(--muted); }
+  .tx-group-stats{ font-size:12px; color:var(--muted); }
+  .tx-group-stats b{ font-weight:600; }
 
   /* ---------- Bilan imprimé (rempli au moment d'imprimer, invisible à l'écran) ---------- */
   #print-report{ display:none; page:bilan; font-family:'Inter', sans-serif; font-size:9pt; color:#172033; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -279,6 +286,11 @@
   #print-report .pr-table .income, #print-report .pr-kpi.income strong{ color:#1F7A50; }
   #print-report .pr-table .expense, #print-report .pr-table .negative, #print-report .pr-kpi.expense strong{ color:#B8372E; }
   #print-report .zero{ color:#B4BCC8; }
+  #print-report .pr-recap{ margin-bottom:16px; }
+  #print-report .pr-table .pr-group-head td{ background:#E3ECF8 !important; color:#06336E; font-size:9pt; font-weight:700; padding:7px; border-bottom:1px solid #C9DAF0; }
+  #print-report .pr-table .pr-group-head td span{ font-size:8pt; font-weight:500; color:#4A5568; }
+  #print-report .pr-table .pr-group-head{ break-after:avoid; }
+  #print-report .pr-table .pr-group-total td{ background:#F1F5FA !important; font-weight:700; border-bottom:2px solid #C9DAF0; }
   #print-report .pr-foot{ margin-top:12px; padding-top:7px; border-top:1px solid #E3E8EF; font-size:7.5pt; color:#8A94A6; text-align:right; }
 </style>
 </head>
@@ -612,6 +624,10 @@
               <option value="date-asc">Date ↑ (ancien)</option>
               <option value="montant-desc">Montant ↓</option>
               <option value="montant-asc">Montant ↑</option>
+            </select>
+            <select id="tx-group" title="Regrouper les transactions" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
+              <option value="">Sans regroupement</option>
+              <option value="commentaire">Grouper par remis par / remis à</option>
             </select>
             <select id="tx-page-size" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
               <option value="10">10 / page</option>
@@ -1104,9 +1120,10 @@ function normalizeTransactionDates(){
   });
 }
 // Ligne « remis par / remis à » et date de remise en main propre d'une transaction (texte brut).
-function remiseInfo(t){
+// sansCommentaire : quand les lignes sont déjà regroupées par commentaire.
+function remiseInfo(t, sansCommentaire = false){
   return [
-    t.Commentaire ? `💬 ${t.Commentaire}` : '',
+    t.Commentaire && !sansCommentaire ? `💬 ${t.Commentaire}` : '',
     t.DateRemise ? `🤝 Remis en main propre le ${dateFr(t.DateRemise)}` : '',
   ].filter(Boolean).join(' · ');
 }
@@ -2286,6 +2303,7 @@ $('#tx-filter-date-from').addEventListener('change', () => { txCurrentPage = 1; 
 $('#tx-filter-date-to').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-sort').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-page-size').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
+$('#tx-group').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-reset').addEventListener('click', () => {
   $('#tx-filter-foyer').value = '';
   $('#tx-filter-type').value = '';
@@ -2295,6 +2313,7 @@ $('#tx-filter-reset').addEventListener('click', () => {
   $('#tx-filter-date-from').value = '';
   $('#tx-filter-date-to').value = '';
   $('#tx-sort').value = 'date-desc';
+  $('#tx-group').value = '';
   txCurrentPage = 1;
   renderTransactions();
 });
@@ -2340,6 +2359,34 @@ function txTotals(rows){
   return { revenus, depenses, solde: revenus - depenses };
 }
 
+// Regroupement par « remis par / remis à » (champ Commentaire).
+const SANS_COMMENTAIRE = '__sans_commentaire__';
+const cleanCommentaire = (t) => String(t.Commentaire || '').trim().replace(/\s+/g, ' ');
+// Même groupe malgré les majuscules, les accents ou les espaces en trop.
+function commentaireKey(t){
+  const c = cleanCommentaire(t);
+  return c ? c.toLocaleLowerCase('fr').normalize('NFD').replace(/[̀-ͯ]/g, '') : SANS_COMMENTAIRE;
+}
+// Garde l'ordre des transactions dans chaque groupe ; groupes par ordre alphabétique, « Sans commentaire » en dernier.
+function groupByCommentaire(rows){
+  const groups = new Map();
+  rows.forEach(t => {
+    const key = commentaireKey(t);
+    if(!groups.has(key)) groups.set(key, { key, rows:[], spellings:{} });
+    const g = groups.get(key);
+    g.rows.push(t);
+    if(key !== SANS_COMMENTAIRE) g.spellings[cleanCommentaire(t)] = (g.spellings[cleanCommentaire(t)] || 0) + 1;
+  });
+  return [...groups.values()].map(g => ({
+    key: g.key,
+    rows: g.rows,
+    // Libellé affiché : l'écriture la plus fréquente du groupe.
+    label: g.key === SANS_COMMENTAIRE ? 'Sans commentaire' : Object.entries(g.spellings).sort((a,b) => b[1] - a[1])[0][0],
+    ...txTotals(g.rows),
+  })).sort((a,b) => (a.key === SANS_COMMENTAIRE) - (b.key === SANS_COMMENTAIRE)
+    || a.label.localeCompare(b.label, 'fr', { sensitivity:'base' }));
+}
+
 // Le bilan est imprimé depuis la page elle-même (et non une fenêtre séparée) :
 // fonctionne aussi dans l'application installée sur téléphone.
 function printTransactionReport(){
@@ -2354,6 +2401,7 @@ function printTransactionReport(){
   }
 
   const sorted = rows.slice().sort(byDateAsc);
+  const grouped = $('#tx-group').value === 'commentaire';
   const { revenus, depenses, solde } = txTotals(sorted);
   const periodFrom = filters.dateFrom || dateOnly(sorted[0].Date);
   const periodTo = filters.dateTo || dateOnly(sorted[sorted.length - 1].Date);
@@ -2364,25 +2412,57 @@ function printTransactionReport(){
     filters.sousCategorie === SANS_SOUS_CATEGORIE ? 'Sans sous-catégorie'
       : filters.sousCategorie ? `Sous-catégorie : ${iconOf(store.sousCategories, filters.sousCategorie)}${filters.sousCategorie}` : '',
     filters.foyer ? `Foyer : ${iconOf(store.foyers, filters.foyer)}${filters.foyer}` : 'Tous les foyers',
+    grouped ? 'Regroupé par remis par / remis à' : '',
   ].filter(Boolean);
   const amount = (n, cls) => n ? `<span class="${cls}">${fmt(n)} Ar</span>` : '<span class="zero">0 Ar</span>';
 
-  let soldeCumulatif = 0;
-  const body = sorted.map(t => {
-    const montant = Number(t.Montant || 0);
-    const isRevenu = t.Type === 'Revenu';
-    soldeCumulatif += isRevenu ? montant : -montant;
-    return `<tr>
-      <td class="date">${dateFr(t.Date)}</td>
-      <td>${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
-      <td>${reportEscape(t.SousCategorie || '—')}</td>
-      <td class="desc">${reportEscape(t.Description || '—')}${remiseInfo(t) ? `<div class="sub">${reportEscape(remiseInfo(t))}</div>` : ''}</td>
-      <td class="num">${isRevenu ? amount(0) : amount(montant, 'expense')}</td>
-      <td class="num">${isRevenu ? amount(montant, 'income') : amount(0)}</td>
-      <td class="num solde ${soldeCumulatif < 0 ? 'negative' : ''}">${fmt(soldeCumulatif)} Ar</td>
-      <td class="stamp">${reportEscape(stampFr(t.Horodatage) || '—')}</td>
-    </tr>`;
-  }).join('');
+  // Lignes de mouvements avec solde cumulé à partir de zéro (sur toute la sélection, ou dans chaque groupe).
+  const movementRows = (list) => {
+    let soldeCumulatif = 0;
+    return list.map(t => {
+      const montant = Number(t.Montant || 0);
+      const isRevenu = t.Type === 'Revenu';
+      soldeCumulatif += isRevenu ? montant : -montant;
+      const info = remiseInfo(t, grouped);
+      return `<tr>
+        <td class="date">${dateFr(t.Date)}</td>
+        <td>${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
+        <td>${reportEscape(t.SousCategorie || '—')}</td>
+        <td class="desc">${reportEscape(t.Description || '—')}${info ? `<div class="sub">${reportEscape(info)}</div>` : ''}</td>
+        <td class="num">${isRevenu ? amount(0) : amount(montant, 'expense')}</td>
+        <td class="num">${isRevenu ? amount(montant, 'income') : amount(0)}</td>
+        <td class="num solde ${soldeCumulatif < 0 ? 'negative' : ''}">${fmt(soldeCumulatif)} Ar</td>
+        <td class="stamp">${reportEscape(stampFr(t.Horodatage) || '—')}</td>
+      </tr>`;
+    }).join('');
+  };
+
+  let recap = '';
+  let tbodies;
+  if(grouped){
+    const groups = groupByCommentaire(sorted);
+    const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+    recap = `
+    <div class="pr-section"><h2>Récapitulatif par remis par / remis à</h2><span>${plural(groups.length, 'groupe')}</span></div>
+    <table class="pr-table pr-recap">
+      <thead><tr><th>Remis par / remis à</th><th class="num">Mouvements</th><th class="num">Dépenses</th><th class="num">Revenus</th><th class="num">Solde</th></tr></thead>
+      <tbody>${groups.map(g => `<tr>
+        <td>${reportEscape(g.label)}</td>
+        <td class="num">${g.rows.length}</td>
+        <td class="num">${amount(g.depenses, 'expense')}</td>
+        <td class="num">${amount(g.revenus, 'income')}</td>
+        <td class="num solde ${g.solde < 0 ? 'negative' : ''}">${fmt(g.solde)} Ar</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td class="num">${sorted.length}</td><td class="num expense">${fmt(depenses)} Ar</td><td class="num income">${fmt(revenus)} Ar</td><td class="num ${solde < 0 ? 'negative' : ''}">${fmt(solde)} Ar</td></tr></tfoot>
+    </table>`;
+    tbodies = groups.map(g => `<tbody>
+      <tr class="pr-group-head"><td colspan="8">${g.key === SANS_COMMENTAIRE ? '' : '💬 '}${reportEscape(g.label)} <span>· ${plural(g.rows.length, 'mouvement')}</span></td></tr>
+      ${movementRows(g.rows)}
+      <tr class="pr-group-total"><td colspan="4">Sous-total — ${reportEscape(g.label)}</td><td class="num expense">${fmt(g.depenses)} Ar</td><td class="num income">${fmt(g.revenus)} Ar</td><td class="num ${g.solde < 0 ? 'negative' : ''}">${fmt(g.solde)} Ar</td><td></td></tr>
+    </tbody>`).join('');
+  } else {
+    tbodies = `<tbody>${movementRows(sorted)}</tbody>`;
+  }
 
   $('#print-report').innerHTML = `
     <header class="pr-head">
@@ -2405,10 +2485,11 @@ function printTransactionReport(){
       <div class="pr-kpi expense"><span>Total dépenses</span><strong>${fmt(depenses)} Ar</strong></div>
       <div class="pr-kpi ${solde < 0 ? 'expense' : 'balance'}"><span>Solde final</span><strong>${fmt(solde)} Ar</strong></div>
     </section>
-    <div class="pr-section"><h2>Détail des mouvements</h2><span>Du plus ancien au plus récent · solde cumulé à partir de zéro</span></div>
+    ${recap}
+    <div class="pr-section"><h2>Détail des mouvements</h2><span>${grouped ? 'Par remis par / remis à · du plus ancien au plus récent · solde cumulé dans chaque groupe' : 'Du plus ancien au plus récent · solde cumulé à partir de zéro'}</span></div>
     <table class="pr-table">
       <thead><tr><th>Date</th><th>Catégorie</th><th>Sous-catégorie</th><th>Description</th><th class="num">Dépense</th><th class="num">Revenu</th><th class="num">Solde</th><th>Date d'intégration</th></tr></thead>
-      <tbody>${body}</tbody>
+      ${tbodies}
       <tfoot><tr><td colspan="4">Totaux de la période</td><td class="num expense">${fmt(depenses)} Ar</td><td class="num income">${fmt(revenus)} Ar</td><td class="num ${solde < 0 ? 'negative' : ''}">${fmt(solde)} Ar</td><td></td></tr></tfoot>
     </table>
     <footer class="pr-foot">Bilan généré depuis Excelltout — Budget familial</footer>`;
@@ -2435,13 +2516,19 @@ function renderTransactions(){
   };
   rows.sort(sorters[sortMode] || sorters['date-desc']);
 
+  // Regroupé : les transactions de chaque groupe se suivent, dans l'ordre de tri choisi.
+  const grouped = $('#tx-group').value === 'commentaire';
+  const groups = grouped ? groupByCommentaire(rows) : [];
+  const groupOf = new Map(groups.flatMap(g => g.rows.map(t => [t, g])));
+  const ordered = grouped ? groups.flatMap(g => g.rows) : rows;
+
   const total = rows.length;
   const pageSize = pageSizeRaw === 'all' ? total || 1 : Number(pageSizeRaw);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if(txCurrentPage > totalPages) txCurrentPage = totalPages;
   if(txCurrentPage < 1) txCurrentPage = 1;
   const startIdx = (txCurrentPage - 1) * pageSize;
-  const pageRows = pageSizeRaw === 'all' ? rows : rows.slice(startIdx, startIdx + pageSize);
+  const pageRows = pageSizeRaw === 'all' ? ordered : ordered.slice(startIdx, startIdx + pageSize);
 
   const pagination = $('#tx-pagination');
   if(total > pageSize && pageSizeRaw !== 'all'){
@@ -2464,20 +2551,42 @@ function renderTransactions(){
 
   $('#tx-empty').style.display = pageRows.length ? 'none' : 'block';
   $('#tx-empty-text').textContent = (store.transactions || []).length ? 'Aucune transaction ne correspond aux filtres.' : "Aucune transaction pour l'instant.";
-  $('#tx-table tbody').innerHTML = pageRows.map(t => `
+  // En-tête de groupe : nom, nombre et totaux du groupe entier (même s'il continue sur une autre page).
+  const groupHead = (g, suite) => {
+    const n = g.rows.length;
+    const stats = [
+      `${n} transaction${n > 1 ? 's' : ''}`,
+      g.revenus ? `Revenus <b class="mono amount-pos">+${fmt(g.revenus)} Ar</b>` : '',
+      g.depenses ? `Dépenses <b class="mono amount-neg">-${fmt(g.depenses)} Ar</b>` : '',
+      `Solde <b class="mono ${g.solde < 0 ? 'amount-neg' : 'amount-pos'}">${fmt(g.solde)} Ar</b>`,
+    ].filter(Boolean).join(' · ');
+    return `<tr class="tx-group-row"><td colspan="8"><div class="tx-group-head">
+      <span class="tx-group-name">${g.key === SANS_COMMENTAIRE ? '∅' : '💬'} ${reportEscape(g.label)}${suite ? ' <span class="tx-group-suite">(suite)</span>' : ''}</span>
+      <span class="tx-group-stats">${stats}</span>
+    </div></td></tr>`;
+  };
+  let lastGroup = null;
+  $('#tx-table tbody').innerHTML = pageRows.map((t, i) => {
+    let head = '';
+    if(grouped && groupOf.get(t) !== lastGroup){
+      lastGroup = groupOf.get(t);
+      head = groupHead(lastGroup, i === 0 && lastGroup.rows[0] !== t);
+    }
+    return head + `
     <tr>
       <td class="mono" style="white-space:nowrap;"${t.Horodatage ? ` title="Saisie le ${stampFr(t.Horodatage)}"` : ''}>${dateFr(t.Date)}</td>
       <td>${t.Membre}</td>
       <td>${t.Foyer ? `<span class="tag">${t.Foyer}</span>` : ''}</td>
       <td><span class="tag">${t.Categorie}</span></td>
       <td>${t.SousCategorie||''}</td>
-      <td>${t.Description||''}${t.ObjectifID ? ' 🏆' : ''}${remiseInfo(t) ? `<div style="font-size:11.5px; color:var(--muted); margin-top:3px;">${reportEscape(remiseInfo(t))}</div>` : ''}</td>
+      <td>${t.Description||''}${t.ObjectifID ? ' 🏆' : ''}${remiseInfo(t, grouped) ? `<div style="font-size:11.5px; color:var(--muted); margin-top:3px;">${reportEscape(remiseInfo(t, grouped))}</div>` : ''}</td>
       <td class="mono ${t.Type==='Revenu'?'amount-pos':'amount-neg'}">${t.Type==='Revenu'?'+':'-'}${fmt(t.Montant)} Ar</td>
       <td>
         <button class="row-del tx-edit" data-id="${t.ID}" title="Modifier">${ICON_EDIT}</button>
         <button class="row-del tx-del" data-id="${t.ID}" title="Supprimer">${ICON_DEL}</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   $$('.tx-del').forEach(b => b.addEventListener('click', async () => {
     if(!confirm('Supprimer cette transaction ?')) return;
@@ -2891,6 +3000,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'23/11/2026', motif:'Regroupement par remis par / remis à', description:"Nouvelle option « Grouper par remis par / remis à » dans l'historique des transactions : les transactions sont rassemblées par commentaire (sans tenir compte des majuscules, accents ou espaces en trop), avec pour chaque groupe le nombre de transactions et les totaux. Le bilan imprimé suit le regroupement : récapitulatif par groupe, puis détail avec un sous-total par groupe.", version:'1.40' },
   { date:'10/11/2026', motif:'Remise en main propre', description:"Ajout de deux champs aux transactions : un commentaire pour noter qui a remis l'argent et à qui il a été remis, et la date de cette remise en main propre. Ils se saisissent dans le formulaire, se modifient avec ✏️ et s'affichent sous la description dans l'historique et dans le bilan imprimé.", version:'1.39' },
   { date:'07/11/2026', motif:'Saisie en série des transactions', description:"Après un clic sur « Ajouter », la date, le type, la catégorie et la sous-catégorie choisis restent sélectionnés pour enchaîner les saisies ; seuls le montant, la description et les autres champs sont vidés.", version:'1.38' },
   { date:'07/11/2026', motif:'Filtres par type et sous-catégorie', description:"Ajout de deux filtres dans l'historique des transactions : par type (dépenses ou revenus) et par sous-catégorie, avec une option « Sans sous-catégorie ». La liste des sous-catégories suit la catégorie choisie. Les deux filtres s'appliquent au tableau, au résumé et au bilan imprimé, où ils apparaissent dans l'en-tête.", version:'1.37' },
