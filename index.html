@@ -283,6 +283,7 @@
   #print-report .pr-table .expense, #print-report .pr-table .negative, #print-report .pr-kpi.expense strong{ color:#B8372E; }
   #print-report .zero{ color:#B4BCC8; }
   #print-report .pr-table .muted{ color:#8A94A6; }
+  #print-report .pr-table .nowrap{ white-space:nowrap; }
   #print-report .pr-table .col-date{ width:16%; }
   #print-report .pr-table .col-montant{ width:20%; }
   #print-report .pr-foot{ margin-top:12px; padding-top:7px; border-top:1px solid #E3E8EF; font-size:7.5pt; color:#8A94A6; text-align:right; }
@@ -599,6 +600,7 @@
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <input type="date" id="tx-filter-date-from" title="Du" style="width:auto; padding:6px 8px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
             <input type="date" id="tx-filter-date-to" title="Au" style="width:auto; padding:6px 8px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
+            <input type="search" id="tx-filter-description" placeholder="🔍 Description contient…" title="Afficher les transactions dont la description contient ce texte" autocomplete="off" style="width:auto; min-width:180px; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
             <select id="tx-filter-type" style="width:auto; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px;">
               <option value="">Tous types</option>
               <option value="Dépense">Dépenses</option>
@@ -636,6 +638,7 @@
               <option value="100">100 / page</option>
               <option value="all">Tout afficher</option>
             </select>
+            <label for="tx-print-foyer" title="Ajouter ou non la colonne Foyer au bilan imprimé" style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px; cursor:pointer; white-space:nowrap;"><input type="checkbox" id="tx-print-foyer" checked style="width:auto; margin:0;"> Imprimer la colonne Foyer</label>
             <button class="btn btn-sm" id="tx-print-report" type="button" style="padding:6px 12px; font-size:12.5px;">🖨️ Imprimer / PDF</button>
             <button class="btn btn-ghost btn-sm" id="tx-filter-reset" type="button" style="padding:6px 10px; font-size:12.5px;">Réinitialiser</button>
           </div>
@@ -1113,12 +1116,19 @@ function stampFr(value){
   if(!raw || Number.isNaN(d.getTime())) return raw;
   return `${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
 }
+// Saisie libre que Sheets a prise pour une date (« 8-10 » devenu 2026-10-08T07:00:00.000Z) : réaffichée en texte JJ/MM/AAAA.
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const asPlainText = (v) => ISO_DATETIME.test(String(v)) ? dateFr(dateOnly(v)) : v;
 function normalizeTransactionDates(){
   (store.transactions || []).forEach(t => {
     t.Date = dateOnly(t.Date);
     if(t.DateRemise) t.DateRemise = dateOnly(t.DateRemise);
+    if(t.Description) t.Description = asPlainText(t.Description);
+    if(t.Commentaire) t.Commentaire = asPlainText(t.Commentaire);
   });
 }
+// Comparaison de texte sans tenir compte des majuscules ni des accents.
+const foldText = (s) => String(s == null ? '' : s).toLocaleLowerCase('fr').normalize('NFD').replace(/\p{M}/gu, '');
 // Ligne « remis par / remis à » et date de remise en main propre d'une transaction (texte brut).
 function remiseInfo(t){
   return [
@@ -2305,6 +2315,16 @@ $('#tx-page-size').addEventListener('change', () => { txCurrentPage = 1; renderT
 $('#tx-group').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-commentaire').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
 $('#tx-filter-date-remise').addEventListener('change', () => { txCurrentPage = 1; renderTransactions(); });
+let txSearchTimer = null;
+$('#tx-filter-description').addEventListener('input', () => {
+  clearTimeout(txSearchTimer);
+  txSearchTimer = setTimeout(() => { txCurrentPage = 1; renderTransactions(); }, 250);
+});
+// Choix « Imprimer la colonne Foyer », gardé sur cet appareil.
+try { const v = localStorage.getItem('excelltout_print_foyer'); if(v !== null) $('#tx-print-foyer').checked = v === '1'; } catch(e){}
+$('#tx-print-foyer').addEventListener('change', (e) => {
+  try { localStorage.setItem('excelltout_print_foyer', e.target.checked ? '1' : '0'); } catch(err){}
+});
 $('#tx-filter-reset').addEventListener('click', () => {
   $('#tx-filter-foyer').value = '';
   $('#tx-filter-type').value = '';
@@ -2315,6 +2335,7 @@ $('#tx-filter-reset').addEventListener('click', () => {
   $('#tx-filter-date-to').value = '';
   $('#tx-filter-commentaire').value = '';
   $('#tx-filter-date-remise').value = '';
+  $('#tx-filter-description').value = '';
   $('#tx-sort').value = 'date-desc';
   $('#tx-group').value = '';
   txCurrentPage = 1;
@@ -2342,7 +2363,9 @@ function getFilteredTransactions(){
     dateTo: $('#tx-filter-date-to').value,
     commentaire: $('#tx-filter-commentaire').value,
     dateRemise: $('#tx-filter-date-remise').value,
+    description: $('#tx-filter-description').value.trim(),
   };
+  const descQuery = foldText(filters.description);
   const rows = (store.transactions || [])
     .filter(t => !filters.foyer || t.Foyer === filters.foyer)
     .filter(t => !filters.type || t.Type === filters.type)
@@ -2353,7 +2376,8 @@ function getFilteredTransactions(){
     .filter(t => !filters.dateTo || dateOnly(t.Date) <= filters.dateTo)
     .filter(t => !filters.commentaire || commentaireKey(t) === filters.commentaire)
     .filter(t => !filters.dateRemise
-      || (filters.dateRemise === SANS_DATE_REMISE ? !t.DateRemise : dateOnly(t.DateRemise) === filters.dateRemise));
+      || (filters.dateRemise === SANS_DATE_REMISE ? !t.DateRemise : dateOnly(t.DateRemise) === filters.dateRemise))
+    .filter(t => !descQuery || foldText(t.Description).includes(descQuery));
   return { rows, filters };
 }
 
@@ -2467,6 +2491,7 @@ function printTransactionReport(){
       : filters.commentaire ? `Commentaire : ${selectedText('#tx-filter-commentaire')}` : '',
     filters.dateRemise === SANS_DATE_REMISE ? 'Sans date de remise'
       : filters.dateRemise ? `Remis le ${dateFr(filters.dateRemise)}` : '',
+    filters.description ? `Description contient « ${filters.description} »` : '',
     grouped ? 'Regroupé par commentaire et date de remise' : '',
   ].filter(Boolean);
   const amount = (n, cls) => n ? `<span class="${cls}">${fmt(n)} Ar</span>` : '<span class="zero">0 Ar</span>';
@@ -2489,6 +2514,7 @@ function printTransactionReport(){
       <tfoot><tr><td colspan="2">Total de la sélection</td><td class="num ${solde < 0 ? 'negative' : ''}">${signedAmount(solde)}</td></tr></tfoot>
     </table>`;
   } else {
+    const showFoyer = $('#tx-print-foyer').checked;
     let soldeCumulatif = 0;
     const body = sorted.map(t => {
       const montant = Number(t.Montant || 0);
@@ -2496,7 +2522,8 @@ function printTransactionReport(){
       soldeCumulatif += isRevenu ? montant : -montant;
       return `<tr>
         <td class="date">${dateFr(t.Date)}</td>
-        <td>${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
+        ${showFoyer ? `<td class="nowrap">${reportEscape(t.Foyer ? iconOf(store.foyers, t.Foyer) + t.Foyer : '—')}</td>` : ''}
+        <td class="nowrap">${reportEscape(iconOf(store.categories, t.Categorie) + (t.Categorie || '—'))}</td>
         <td>${reportEscape(t.SousCategorie || '—')}</td>
         <td class="desc">${reportEscape(t.Description || '—')}${remiseInfo(t) ? `<div class="sub">${reportEscape(remiseInfo(t))}</div>` : ''}</td>
         <td class="num">${isRevenu ? amount(0) : amount(montant, 'expense')}</td>
@@ -2508,9 +2535,9 @@ function printTransactionReport(){
     detail = `
     <div class="pr-section"><h2>Détail des mouvements</h2><span>Du plus ancien au plus récent · solde cumulé à partir de zéro</span></div>
     <table class="pr-table">
-      <thead><tr><th>Date</th><th>Catégorie</th><th>Sous-catégorie</th><th>Description</th><th class="num">Dépense</th><th class="num">Revenu</th><th class="num">Solde</th><th>Date d'intégration</th></tr></thead>
+      <thead><tr><th>Date</th>${showFoyer ? '<th>Foyer</th>' : ''}<th>Catégorie</th><th>Sous-catégorie</th><th>Description</th><th class="num">Dépense</th><th class="num">Revenu</th><th class="num">Solde</th><th>Date d'intégration</th></tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td colspan="4">Totaux de la période</td><td class="num expense">${fmt(depenses)} Ar</td><td class="num income">${fmt(revenus)} Ar</td><td class="num ${solde < 0 ? 'negative' : ''}">${fmt(solde)} Ar</td><td></td></tr></tfoot>
+      <tfoot><tr><td colspan="${showFoyer ? 5 : 4}">Totaux de la période</td><td class="num expense">${fmt(depenses)} Ar</td><td class="num income">${fmt(revenus)} Ar</td><td class="num ${solde < 0 ? 'negative' : ''}">${fmt(solde)} Ar</td><td></td></tr></tfoot>
     </table>`;
   }
 
@@ -3042,6 +3069,7 @@ function startVerseRotation(){
 
 /* ---------- Ticker des possibilités du mode démo ---------- */
 const VERSION_HISTORY = [
+  { date:'28/11/2026', motif:'Texte libre, recherche et colonne Foyer', description:"La description et le commentaire restent du texte : une saisie comme « 8-10 » n'est plus transformée en date par Google Sheets (les anciennes saisies converties s'affichent en JJ/MM/AAAA et peuvent être corrigées avec ✏️). Nouveau champ de recherche « Description contient… » dans l'historique, aussi appliqué au bilan imprimé. Nouvelle case « Imprimer la colonne Foyer » pour ajouter ou retirer la colonne Foyer du bilan imprimé (choix gardé sur l'appareil).", version:'1.42' },
   { date:'23/11/2026', motif:'Remises par commentaire et date', description:"Le regroupement devient « Grouper par commentaire et date de remise » : au lieu du détail des transactions, une ligne par commentaire (remis par / remis à) et date de remise, avec le montant total. Ajout de deux listes déroulantes de filtre : par commentaire et par date de remise (les dates proposées suivent le commentaire choisi). Le bilan imprimé suit les filtres et le regroupement.", version:'1.41' },
   { date:'23/11/2026', motif:'Regroupement par remis par / remis à', description:"Nouvelle option « Grouper par remis par / remis à » dans l'historique des transactions : les transactions sont rassemblées par commentaire (sans tenir compte des majuscules, accents ou espaces en trop), avec pour chaque groupe le nombre de transactions et les totaux. Le bilan imprimé suit le regroupement : récapitulatif par groupe, puis détail avec un sous-total par groupe.", version:'1.40' },
   { date:'10/11/2026', motif:'Remise en main propre', description:"Ajout de deux champs aux transactions : un commentaire pour noter qui a remis l'argent et à qui il a été remis, et la date de cette remise en main propre. Ils se saisissent dans le formulaire, se modifient avec ✏️ et s'affichent sous la description dans l'historique et dans le bilan imprimé.", version:'1.39' },
